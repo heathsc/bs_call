@@ -1393,8 +1393,9 @@ GT_INLINE gt_status
 gt_isp_quick_parse_bs_sam_alignment(const char **const text_line,
                                     align_details *al, const uint64_t thresh,
                                     const uint64_t max_template_len,
-                                    bool *reverse) {
+                                    bool keep_unmatched, bool *reverse) {
   gt_status error_code;
+	al->filtered = gt_flt_none;
   /*
    * Parse FLAG
    */
@@ -1407,18 +1408,34 @@ gt_isp_quick_parse_bs_sam_alignment(const char **const text_line,
   GT_NEXT_CHAR(text_line);
 	int fg;
 	fg = al->alignment_flag;
-	if(fg & GT_SAM_FLAG_MULTIPLE_SEGMENTS) {
+	if((fg & GT_SAM_FLAG_MULTIPLE_SEGMENTS) && !keep_unmatched) {
 		if (((fg &
 					(GT_SAM_FLAG_PROPERLY_ALIGNED | GT_SAM_FLAG_UNMAPPED |
 							GT_SAM_FLAG_NEXT_UNMAPPED | GT_SAM_FLAG_NOT_PASSING_QC |
 							GT_SAM_FLAG_SECONDARY_ALIGNMENT | GT_SAM_FLAG_SUPPLEMENTARY_ALIGNMENT |
 							GT_SAM_FLAG_PCR_OR_OPTICAL_DUPLICATE)) !=
-				 GT_SAM_FLAG_PROPERLY_ALIGNED)) return GT_ISP_SAM_FILTERED;
+				 GT_SAM_FLAG_PROPERLY_ALIGNED)) {
+			if(fg & (GT_SAM_FLAG_SECONDARY_ALIGNMENT | GT_SAM_FLAG_SUPPLEMENTARY_ALIGNMENT)) al->filtered = gt_flt_secondary;
+			else if(fg & GT_SAM_FLAG_UNMAPPED) al->filtered = gt_flt_unmapped;
+			else if(fg & GT_SAM_FLAG_NEXT_UNMAPPED) al->filtered = gt_flt_mate_unmapped;
+			else if(fg & GT_SAM_FLAG_NOT_PASSING_QC) al->filtered = gt_flt_qc;
+			else if(fg & GT_SAM_FLAG_PCR_OR_OPTICAL_DUPLICATE) al->filtered = gt_flt_duplicate;
+			else al->filtered = gt_flt_not_correctly_aligned;
+//			return GT_ISP_SAM_FILTERED;
+		}
 	} else {
 		if(fg & (GT_SAM_FLAG_UNMAPPED | GT_SAM_FLAG_NOT_PASSING_QC |
-										GT_SAM_FLAG_SECONDARY_ALIGNMENT | GT_SAM_FLAG_SUPPLEMENTARY_ALIGNMENT |
-										GT_SAM_FLAG_PCR_OR_OPTICAL_DUPLICATE)) return GT_ISP_SAM_FILTERED;
+						 GT_SAM_FLAG_SECONDARY_ALIGNMENT | GT_SAM_FLAG_SUPPLEMENTARY_ALIGNMENT |
+						 GT_SAM_FLAG_PCR_OR_OPTICAL_DUPLICATE)) {
+			if(fg & (GT_SAM_FLAG_SECONDARY_ALIGNMENT | GT_SAM_FLAG_SUPPLEMENTARY_ALIGNMENT)) al->filtered = gt_flt_secondary;
+			else if(fg & GT_SAM_FLAG_UNMAPPED) al->filtered = gt_flt_unmapped;
+			else if(fg & GT_SAM_FLAG_NOT_PASSING_QC) al->filtered = gt_flt_qc;
+			else if(fg & GT_SAM_FLAG_PCR_OR_OPTICAL_DUPLICATE) al->filtered = gt_flt_duplicate;
+//			return GT_ISP_SAM_FILTERED;
+		}
 	}
+ 	bool mis_matched = (fg & (GT_SAM_FLAG_NEXT_UNMAPPED | GT_SAM_FLAG_PROPERLY_ALIGNED)) != GT_SAM_FLAG_PROPERLY_ALIGNED;
+	
   // Process flags
   *reverse = (fg & GT_SAM_FLAG_REVERSE_COMPLEMENT);
   const bool second_read = (al->alignment_flag & GT_SAM_FLAG_LAST_SEGMENT);
@@ -1431,7 +1448,8 @@ gt_isp_quick_parse_bs_sam_alignment(const char **const text_line,
   const char *const seq_name = *text_line;
   uint64_t seq_length = 0;
   if (gt_expect_false(**text_line == STAR)) {
-    return GT_ISP_SAM_FILTERED; // These should have been filtered before
+		if(!al->filtered) al->filtered = gt_flt_nopos;
+//    return GT_ISP_SAM_FILTERED; // These should have been filtered before
   } else {
     GT_READ_UNTIL(text_line, **text_line == TAB);
     if (GT_IS_EOL(text_line))
@@ -1450,8 +1468,10 @@ gt_isp_quick_parse_bs_sam_alignment(const char **const text_line,
   if (!gt_is_number(**text_line))
     return GT_ISP_PE_EXPECTED_NUMBER;
   GT_PARSE_NUMBER(text_line, pos);
-  if (!pos)
-    return GT_ISP_SAM_FILTERED; // These should have been filtered before
+  if (!pos) {
+		if(!al->filtered) al->filtered = gt_flt_nopos;
+//    return GT_ISP_SAM_FILTERED; // These should have been filtered before
+	}
   GT_NEXT_CHAR(text_line);
   if (*reverse) {
     al->forward_position = 0;
@@ -1482,7 +1502,10 @@ gt_isp_quick_parse_bs_sam_alignment(const char **const text_line,
    * Parse RNEXT (Sequence-name of the next segment)
    */
   if (**text_line == STAR) {
-    if(mult_seg) return GT_ISP_SAM_FILTERED; // These should have been filtered before
+    if(mult_seg && !keep_unmatched) {
+			if(!al->filtered) al->filtered = gt_flt_nomatepos;
+//			return GT_ISP_SAM_FILTERED; // These should have been filtered before
+		}
     GT_NEXT_CHAR(text_line);
     if (**text_line != TAB)
       return GT_ISP_PE_BAD_CHARACTER;
@@ -1500,23 +1523,36 @@ gt_isp_quick_parse_bs_sam_alignment(const char **const text_line,
     GT_NEXT_CHAR(text_line);
     if (gt_string_get_length(al->seq_name) != (*text_line - tp) ||
         strncmp(gt_string_get_string(al->seq_name), tp,
-                gt_string_get_length(al->seq_name)))
-      return GT_ISP_SAM_FILTERED;
+                gt_string_get_length(al->seq_name))) {
+			if(!al->filtered) al->filtered = gt_flt_mismatch_chr;
+			if(keep_unmatched) mis_matched = true;
+//			else return GT_ISP_SAM_FILTERED;
+		}
   }
   // Parse PNEXT (Position of the next segment)
   if (!gt_is_number(**text_line))
     return GT_ISP_PE_EXPECTED_NUMBER;
   GT_PARSE_NUMBER(text_line, pos);
 	if(mult_seg) {
-		if (!pos) return GT_ISP_SAM_FILTERED; // These should have been filtered before
+		if (!pos) {
+			if(!keep_unmatched) {
+				if(!al->filtered) al->filtered = gt_flt_nomatepos;
+//				return GT_ISP_SAM_FILTERED; // These should have been filtered before
+			}
+			else mis_matched = true;
+		}
 		if (*reverse) {
-			if (pos > al->reverse_position)
-				return GT_ISP_SAM_FILTERED; // Reject totally overlapping reads
-			al->forward_position = pos;
+			if (pos > al->reverse_position) {
+				if(!al->filtered) al->filtered = gt_flt_orientation;
+//				return GT_ISP_SAM_FILTERED; // Reject totally overlapping reads
+			}
+			al->forward_position = mis_matched ? 0 : pos;
 		} else {
-			if (pos < al->forward_position)
-				return GT_ISP_SAM_FILTERED; // Reject totally overlapping reads
-			al->reverse_position = pos;
+			if (pos < al->forward_position) {
+				if(!al->filtered) al->filtered = gt_flt_orientation;				
+//				return GT_ISP_SAM_FILTERED; // Reject totally overlapping reads
+			}
+			al->reverse_position = mis_matched ? 0 : pos;
 		}
 	}
   GT_NEXT_CHAR(text_line);
@@ -1528,21 +1564,28 @@ gt_isp_quick_parse_bs_sam_alignment(const char **const text_line,
       return GT_ISP_PE_EXPECTED_NUMBER;
     GT_PARSE_NUMBER(text_line, al->template_len)
   }
-  if (llabs(al->template_len) > max_template_len)
-    return GT_ISP_SAM_FILTERED;
+	if(mult_seg && !keep_unmatched) {
+		if (llabs(al->template_len) > max_template_len) {
+			if(!al->filtered) al->filtered = gt_flt_insert_size;
+//			return GT_ISP_SAM_FILTERED;
+		}
+	}
 
   GT_PARSE_SIGNED_NUMBER_END_BLOCK(al->template_len);
   if (GT_IS_EOL(text_line))
     return GT_ISP_PE_PREMATURE_EOL;
   GT_NEXT_CHAR(text_line);
-	if(!mult_seg) {
+	if(!mult_seg || mis_matched) {
 		al->template_len = al->align_length + 1;
+		al->alignment_flag &= ~GT_SAM_FLAG_MULTIPLE_SEGMENTS;
 	}
  /*
    * Parse SEQ (READ)
    */
-  if (gt_expect_false(**text_line == STAR))
-    return GT_ISP_SAM_FILTERED; // Can't do much if we don't have the sequence!
+  if (gt_expect_false(**text_line == STAR)) {
+		if(!al->filtered) al->filtered = gt_flt_noseq;
+//    return GT_ISP_SAM_FILTERED; // Can't do much if we don't have the sequence!
+	}
   const char *const seq_read = *text_line;
   GT_READ_UNTIL(text_line, **text_line == TAB);
   if (GT_IS_EOL(text_line))
@@ -1569,6 +1612,9 @@ gt_isp_quick_parse_bs_sam_alignment(const char **const text_line,
       al->qualities[ix] = gt_string_new(read_length);
     gt_string_set_nstring_static(al->qualities[ix], seq_qual, read_length);
   }
+	if(al->filtered) {
+		if(!(keep_unmatched && (al->filtered == gt_flt_insert_size || al->filtered == gt_flt_mismatch_chr))) return GT_ISP_SAM_FILTERED;
+	}
   /*
    * OPTIONAL FIELDS - need to recover TP, TQ and Bisulfite strand fields
    */

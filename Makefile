@@ -15,7 +15,7 @@ release:
 
 debug:
 	$(MAKE) --directory=GEMTools debug
-	$(MAKE) --directory=src debuf
+	$(MAKE) --directory=src debug
 
 static:
 	$(MAKE) --directory=GEMTools static

@@ -73,7 +73,7 @@ gt_input_file* gt_input_file_general_open(char* const file_name,const bool mmap_
   gt_input_file* input_file = gt_alloc(gt_input_file);
   // Input file
   struct stat stat_info;
-  unsigned char tbuf[4];
+  unsigned char tbuf[6];
   int i;
   gt_cond_fatal_error(stat(file_name,&stat_info)==-1,FILE_STAT,file_name);
   input_file->file_name = file_name;
@@ -96,24 +96,38 @@ gt_input_file* gt_input_file_general_open(char* const file_name,const bool mmap_
     input_file->file_type = REGULAR_FILE;
     if(S_ISREG(stat_info.st_mode)) {
       // Regular file - check if gzip or bzip compressed
-      i=(int)fread(tbuf,(size_t)1,(size_t)4,input_file->file);
-      if(tbuf[0]==0x1f && tbuf[1]==0x8b && tbuf[2]==0x08) {
-        input_file->file_type=GZIPPED_FILE;
-        fclose(input_file->file);
+      i=(int)fread(tbuf,(size_t)1,(size_t)6,input_file->file);
+		if(i == 6) {
+			if(tbuf[0]==0x1f && tbuf[1]==0x8b && tbuf[2]==0x08) {
+				input_file->file_type=GZIPPED_FILE;
+				fclose(input_file->file);
 #ifdef HAVE_ZLIB
-        gt_cond_fatal_error(!(input_file->file=(void *)gzopen(file_name,"r")),FILE_GZIP_OPEN,file_name);
+				gt_cond_fatal_error(!(input_file->file=(void *)gzopen(file_name,"r")),FILE_GZIP_OPEN,file_name);
 #else
-        gt_fatal_error(FILE_GZIP_NO_ZLIB,file_name);
+				gt_fatal_error(FILE_GZIP_NO_ZLIB,file_name);
 #endif
-      } else if(tbuf[0]=='B' && tbuf[1]=='Z' && tbuf[2]=='h' && tbuf[3]>='0' && tbuf[3]<='9') {
-        fseek(input_file->file,0L,SEEK_SET);
-        input_file->file_type=BZIPPED_FILE;
+			} else if(tbuf[0]=='B' && tbuf[1]=='Z' && tbuf[2]=='h' && tbuf[3]>='0' && tbuf[3]<='9') {
+				fseek(input_file->file,0L,SEEK_SET);
+				input_file->file_type=BZIPPED_FILE;
 #ifdef HAVE_BZLIB
-        input_file->file=BZ2_bzReadOpen(&i,input_file->file,0,0,NULL,0);
-        gt_cond_fatal_error(i!=BZ_OK,FILE_BZIP2_OPEN,file_name);
+				input_file->file=BZ2_bzReadOpen(&i,input_file->file,0,0,NULL,0);
+				gt_cond_fatal_error(i!=BZ_OK,FILE_BZIP2_OPEN,file_name);
 #else
-        gt_fatal_error(FILE_BZIP2_NO_BZLIB,file_name);
+				gt_fatal_error(FILE_BZIP2_NO_BZLIB,file_name);
 #endif
+			} else  if (tbuf[0] == 0xfd && tbuf[1] == '7' && tbuf[2] == 'z' && tbuf[3] == 'X' && tbuf[4] == 'Z' && tbuf[5] == 0) {
+				fseek(input_file->file,0L,SEEK_SET);
+				input_file->file_type=XZIPPED_FILE;
+				char *nbuf = NULL;
+				asprintf(&nbuf, "xzcat %s", file_name);
+				gt_cond_fatal_error(nbuf == NULL, MEM_ALLOC);
+				input_file->file=popen(nbuf, "r");
+//				fprintf(stderr, "xzip:  cmd line = '%s', file = %p\n", nbuf, input_file->file);
+				gt_cond_fatal_error(input_file == NULL, FILE_XZIP_OPEN, file_name);
+				free(nbuf);
+			} else {
+				fseek(input_file->file,0L,SEEK_SET);
+			}
       } else {
         fseek(input_file->file,0L,SEEK_SET);
       }
@@ -162,6 +176,10 @@ gt_status gt_input_file_close(gt_input_file* const input_file) {
       if (bzerr!=BZ_OK) status = GT_INPUT_FILE_CLOSE_ERR;
 #endif
       break;
+	case XZIPPED_FILE:
+	  gt_free(input_file->file_buffer);
+	  pclose(input_file->file);
+	  break;
     case MAPPED_FILE:
       gt_cond_error(munmap(input_file->file,input_file->file_size)==-1,SYS_UNMAP);
       if (close(input_file->fildes)) status = GT_INPUT_FILE_CLOSE_ERR;
@@ -221,6 +239,7 @@ GT_INLINE size_t gt_input_file_fill_buffer(gt_input_file* const input_file) {
   input_file->buffer_begin = 0;
   if (gt_expect_true(
       (input_file->file_type==STREAM && !feof(input_file->file)) ||
+      (input_file->file_type==XZIPPED_FILE && !feof(input_file->file)) ||
       (input_file->file_type==REGULAR_FILE && !feof(input_file->file)))) {
     input_file->buffer_size =
         fread(input_file->file_buffer,sizeof(uint8_t),GT_INPUT_BUFFER_SIZE,input_file->file);
@@ -368,6 +387,9 @@ gt_file_format gt_input_file_detect_file_format(gt_input_file* const input_file)
   case SAM:
     if (gt_input_file_test_sam(input_file,&(input_file->sam_headers),false)) return SAM;
     break;
+	 case GENERIC:
+		return GENERIC;
+		break;
   default:
     if (gt_input_file_test_map(input_file,&(input_file->map_type),false)) {
     	input_file->file_format = MAP;

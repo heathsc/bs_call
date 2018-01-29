@@ -51,6 +51,14 @@ The parameters configured for this example are -p (Paired End Data) and -L5 (5 b
 
 
 ---------
+Changelog
+---------
+
+2.0.1 Use of dbSNP to evaluate SNP Calling.
+2.0.1 Output JSON stats to measure SNP and Methylation calls.
+2.0.1 Index set of Bed files for dbSNP.
+
+---------
 Licensing
 ---------
 

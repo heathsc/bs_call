@@ -427,7 +427,7 @@ Copyright (C) 2012 Free Software Foundation, Inc.
 This config.status script is free software; the Free Software Foundation
 gives unlimited permission to copy, distribute and modify it."
 
-ac_pwd='/Users/heath/code/gemtools/GEMTools'
+ac_pwd='/home/devel/heath/code/new_bs_call_pack/gemtools/GEMTools'
 srcdir='.'
 test -n "$AWK" || AWK=awk
 # The default lists apply if the user does not specify any file.
@@ -584,8 +584,8 @@ cat >>"$ac_tmp/subs1.awk" <<\_ACAWK &&
 S["LTLIBOBJS"]=""
 S["LIBOBJS"]=""
 S["HAVE_OPENMP"]="1"
-S["EGREP"]="/usr/bin/grep -E"
-S["GREP"]="/usr/bin/grep"
+S["EGREP"]="/bin/grep -E"
+S["GREP"]="/bin/grep"
 S["CPP"]="gcc -E"
 S["HAVE_BZLIB"]="1"
 S["HAVE_ZLIB"]="1"
@@ -601,8 +601,8 @@ S["host_alias"]=""
 S["build_alias"]=""
 S["LIBS"]=""
 S["ECHO_T"]=""
-S["ECHO_N"]=""
-S["ECHO_C"]="\\c"
+S["ECHO_N"]="-n"
+S["ECHO_C"]=""
 S["DEFS"]="-DPACKAGE_NAME=\\\"GEMTools\\\" -DPACKAGE_TARNAME=\\\"gemtools\\\" -DPACKAGE_VERSION=\\\"1.0\\\" -DPACKAGE_STRING=\\\"GEMTools\\ 1.0\\\" -DPACKAGE_BUGREPORT=\\\"\\\" -DP"\
 "ACKAGE_URL=\\\"\\\" -DSTDC_HEADERS=1 -DHAVE_SYS_TYPES_H=1 -DHAVE_SYS_STAT_H=1 -DHAVE_STDLIB_H=1 -DHAVE_STRING_H=1 -DHAVE_MEMORY_H=1 -DHAVE_STRINGS_H=1 -"\
 "DHAVE_INTTYPES_H=1 -DHAVE_STDINT_H=1 -DHAVE_UNISTD_H=1 -DHAVE_OMP_H=1"

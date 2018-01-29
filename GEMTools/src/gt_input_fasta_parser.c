@@ -380,6 +380,8 @@ GT_INLINE gt_status gt_input_multifasta_parser_get_archive(
     GT_INPUT_FILE_NEXT_CHAR(input_multifasta_file);
 		bool store_str = true;
     while (gt_expect_true(!input_multifasta_file->eof &&
+													GT_INPUT_FILE_CURRENT_CHAR(input_multifasta_file)!='*' &&
+													GT_INPUT_FILE_CURRENT_CHAR(input_multifasta_file)!='=' &&
 													GT_INPUT_FILE_CURRENT_CHAR(input_multifasta_file)!=EOL &&
 													GT_INPUT_FILE_CURRENT_CHAR(input_multifasta_file)!=DOS_EOL)) {
 			if(store_str) {

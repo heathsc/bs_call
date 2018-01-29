@@ -8,6 +8,7 @@
 #define DEFAULT_REALIGN_TOL 8 // Allow reads to align within this many bp of reported position
 #define DEFAULT_UNDER_CONVERSION 0.01
 #define DEFAULT_OVER_CONVERSION 0.05
+#define DEFAULT_REF_BIAS 2
 
 #define MAX_GAUSS_N 256
 #define MAX_QUAL 43
@@ -16,67 +17,181 @@
 #define MAX_ITER 15
 #define ITER_FIN (1.0e-8)
 
+#define LOG10 (2.30258509299404568402)
+#define LOG2 (0.69314718055994530942)
+
+typedef struct {
+  uint64_t mask;
+  int n_entries;
+  uint16_t *entries;
+  uint8_t *name_buf;
+} dbsnp_bin;
+
+typedef struct {
+  char *name;
+  int min_bin;
+  int max_bin;
+  dbsnp_bin *bins;
+  UT_hash_handle hh;
+} dbsnp_ctg;
+
+typedef enum {stats_all = 0, stats_passed} stats_cat;
+typedef enum {all_sites = 0, variant_sites, CpG_ref_sites, CpG_nonref_sites} qual_cat;
+typedef enum {mut_AC = 0, mut_AG, mut_AT, mut_CA, mut_CG, mut_CT, mut_GA, mut_GC, mut_GT, mut_TA, mut_TC, mut_TG, mut_no} stats_mut;
 typedef enum {graphical_model, maximum_likelihood} BS_Caller;
+typedef enum {base_none = 0, base_trim, base_clip, base_overlap, base_lowqual} base_filter_types;
 
-/*
-* bs_call options
-*/
-gt_option bs_call_options[] = {
-  /* Operations */
-  { 'N', "no-split", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 1, true, "", "Do not split output on contig"},
-  { '1', "haploid", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 1, true, "", "Assume genome is haploid"},
-  { 'd', "keep-duplicates", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 1, true, "", "Don't merge duplicate reads"},
-  { 's', "extra-stats", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 1, true, "", "Generate extra stats files"},
-  { 'R', "right-trim", GT_OPT_REQUIRED, GT_OPT_INT, 1, true, "", "Bases to trim from right of read pair"},
-  { 'L', "left-trim", GT_OPT_REQUIRED, GT_OPT_INT, 1, true, "", "Bases to trim from left of read pair"},
-  { 'B', "blank-trim", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 1, true, "", "Don't use trimmed bases for genotype estimation"},
-  { 'q', "mapq-threshold", GT_OPT_REQUIRED, GT_OPT_INT, 1, true, "<int> ","Set MAPQ threshold for selecting reads (default "STRING(DEFAULT_MAPQ_THRESH)")"},
-  { 'Q', "bq-threshold", GT_OPT_REQUIRED, GT_OPT_INT, 1, true, "<int> ","Set base quality threshold for calling (default "STRING(MIN_QUAL)")"},
-	{ 'l', "max-template-length", GT_OPT_REQUIRED, GT_OPT_INT, 1, true, "<int> ","Set maximum template length for a pair (default "STRING(DEFAULT_MAX_TEMPLATE_LEN)")"},
-  { 'T', "realign-tolerance", GT_OPT_REQUIRED, GT_OPT_INT, 1, true, "<int> ","Tolerance for realignment positions (default "STRING(DEFAULT_REALIGN_TOL)")"},
-  /* I/O */
-  { 'p', "paired-end", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 2, true, "" , "" },
-  { 'z', "gzip", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 2, true, "" , "" },
-  { 'j', "bzip2", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 2, true, "" , "" },
-  { 'Z', "no-compress", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 2, true, "" , "" },
-  { 201, "mmap-input", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 2, false, "" , "" },
-  { 'o', "output", GT_OPT_REQUIRED, GT_OPT_STRING, 2, true, "<output prefix>" , "" },
-  { 'P', "pileup", GT_OPT_REQUIRED, GT_OPT_STRING, 2, true, "<pileup file name>" , "" },
-  { 'n', "sample", GT_OPT_REQUIRED, GT_OPT_STRING, 2, true, "<sample name>" , "SAMPLE" },
-  { 'x', "species", GT_OPT_REQUIRED, GT_OPT_STRING, 2, true, "<species filter" , "" },	
-  { 'r', "reference", GT_OPT_REQUIRED, GT_OPT_STRING, 2, true, "<file> (MultiFASTA/FASTA)" , "" },
-  { 'I', "gem-index", GT_OPT_REQUIRED, GT_OPT_STRING, 2, true, "<file> (GEM2-Index)" , "" },
-	/* Model */
-  { 'c', "conversion", GT_OPT_REQUIRED, GT_OPT_INT, 3, true, "<float>,<float>","Set under and over conversion rates (default "STRING(DEFAULT_UNDER_CONVERSION)","STRING(DEFAULT_OVER_CONVERSION)")"},	
-  { 301, "graphical_model", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 3, true, "", "" },
-  { 302, "maximum_likelihood", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 3, true, "", "" },
-	/* Misc */
-  { 'v', "verbose", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 4, true, "", ""},
-  { 't', "threads", GT_OPT_REQUIRED, GT_OPT_INT, 4, false, "", ""},
-  { 'h', "help", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 4, true, "", ""},
-  {  0, 0, 0, 0, 0, false, "", ""}
-};
+typedef struct {
+  char *ctg;
+  bool flag;
+  UT_hash_handle hh;
+} ctg_hash;
 
-char* bs_call_options_short = "N1dsBR:L:pzjZo:r:I:vt:h";
+typedef struct {
+  char *contig;
+  uint64_t snps[2];
+  uint64_t indels[2];
+  uint64_t multi[2];
+  uint64_t dbSNP_sites[2]; // How many dbSNP sites are covered
+  uint64_t dbSNP_var[2]; // How many dbSNP sites are variant
+  uint64_t CpG_ref[2];
+  uint64_t CpG_nonref[2];
+  int nbins;
+  uint8_t *gc;
+  UT_hash_handle hh;
+} gt_ctg_stats;
 
-char* bs_call_groups[] = {
-  /*  0 */ "Null",
-  /*  1 */ "Operations",
-  /*  2 */ "I/O",
-  /*  3 */ "Model",
-  /*  4 */ "Misc",
-};
+typedef struct {
+  uint64_t coverage;
+  uint64_t var;
+  uint64_t CpG[2];
+  uint64_t CpG_inf[2];
+  uint64_t all;
+  uint64_t gc_pcent[101];
+  UT_hash_handle hh;
+} gt_cov_stats;
 
-// Weights for SW alignment (same as BWA)
+typedef struct {
+  uint64_t conv_cts[4];
+} meth_cts;
 
-#define BS_CALL_MATCH 1
-#define BS_CALL_MISM -4
-#define BS_CALL_GAP_OPEN 6
-#define BS_CALL_GAP_EXTEND 1
-#define BS_CALL_QUAL_CUTOFF 26 // For realignment
+typedef struct {
+  uint64_t cts[2];
+} fstats_cts;
 
-int align_ss2(int16_t **tref,int rl,gt_string *query,int mm,int v,int u,int mat,int x,int tol);
-int band_align_ss2(const char *ref,int rl,gt_string *query,int mm,int v,int u,int mat,int x);
+typedef struct {
+  uint64_t snps[2];
+  uint64_t indels[2];
+  uint64_t multi[2];
+  uint64_t dbSNP_sites[2]; // How many dbSNP sites are covered
+  uint64_t dbSNP_var[2]; // How many dbSNP sites are variant
+  uint64_t CpG_ref[2];
+  uint64_t CpG_nonref[2];
+  uint64_t mut_counts[12][2];
+  uint64_t dbSNP_mut_counts[12][2];
+  uint64_t qual[4][256];
+  uint64_t filter_cts[14];
+  uint64_t filter_bases[14];
+  uint64_t base_filter[5];
+  gt_vector *meth_profile;
+  gt_vector *fs_stats;
+  gt_vector *qd_stats;
+  gt_vector *mq_stats;
+  gt_vector *gof_stats;
+  uint64_t filter_counts[2][32];
+  double CpG_ref_meth[2][101];
+  double CpG_nonref_meth[2][101];
+  gt_cov_stats *cov_stats;
+} bs_stats;
+
+typedef struct {
+  char *input_file;
+  char *name_reference_file;
+  //  char *name_gem_index_file;
+  char *output_prefix;
+  char *sample_name;
+  char *species_filter;
+  char *dbSNP_name;
+  char *report_file;
+  ctg_hash *species_hash;
+  bool mmap_input;
+  /* Control flags */
+  bool is_paired;
+  bool no_split;
+  bool extra_stats;
+  bool keep_duplicates;
+  bool keep_unmatched;
+  bool haploid;
+  bool verbose;
+  bool blank_trim;
+  //	bool pileup;
+  bool all_positions;
+  BS_Caller caller;
+  int left_trim;
+  int right_trim;
+  //	char *pileup_file_name;
+  FILE *output_file;
+  FILE *json_file;
+  //  FILE *pileup_file;
+  gt_sam_headers *sam_headers;
+  uint8_t mapq_thresh;
+  uint8_t min_qual;
+  uint64_t max_template_len;
+  uint64_t realign_tol;
+  double under_conv, over_conv;
+  double ref_bias;
+  gt_output_file_compression compress;
+  gt_generic_printer_attributes *printer_attr;
+  gt_buffered_output_file *buf_output;
+  int num_threads;
+  gt_sequence_archive *sequence_archive;
+  dbsnp_ctg *dbSNP;
+  uint16_t n_dbSNP_prefixes;
+  char **dbSNP_prefix;
+  char *dbSNP_header;
+  bs_stats *stats;
+  gt_ctg_stats *ctg_stats;
+} sr_param;
+
+typedef struct {
+  double e, k, ln_k, ln_k_half, ln_k_one;
+} qual_prob;
+
+typedef struct {
+  uint64_t counts[8];
+  int qual[8]; // Average quality per base type
+  double gt_prob[10]; // Genotype log probabilities (Log10)
+  double gt_gof; // Goodness of fit LR (Log10) 
+  double fisher_strand; // Allele strand bias LR (Log10) 
+  int mq; // RMS Mapping quality
+  int aq; // Average base quality
+  uint8_t max_gt;
+} gt_meth;
+
+typedef struct {
+  gt_meth gtm;
+  bool ready;
+  bool skip;
+} gt_vcf;
+
+typedef struct _base_counts {
+  struct _base_counts *next;
+  int8_t idx[MAX_QUAL + 1];
+  uint32_t counts[MAX_QUAL + 1];
+} base_counts;
+
+typedef struct {
+  uint32_t counts[2][8];
+  uint32_t n;
+  float quality[8];
+  float mapq2;
+  uint8_t *seq;
+  size_t seq_size;
+  size_t seq_idx;
+} pileup;
+
+void fill_base_prob_table(void);
+void calc_gt_prob(gt_meth *gt, sr_param *param, char rf);
 
 #define BS_CALL_H 1
 #endif

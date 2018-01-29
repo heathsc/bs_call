@@ -96,6 +96,8 @@ GT_INLINE gt_status gt_input_sam_parser_get_single_alignment(
 
 typedef enum { NON_CONVERTED, STRAND_C2T, STRAND_G2A } gt_bs_strand;
 
+typedef enum { gt_flt_none = 0, gt_flt_unmapped, gt_flt_qc, gt_flt_secondary, gt_flt_mate_unmapped, gt_flt_duplicate, gt_flt_nopos, gt_flt_nomatepos, gt_flt_mismatch_chr, gt_flt_orientation, gt_flt_insert_size, gt_flt_noseq, gt_flt_mapq,gt_flt_not_correctly_aligned } gt_filter_reason;
+
 typedef struct {
   uint64_t alignment_flag;
   uint64_t forward_position;
@@ -104,19 +106,23 @@ typedef struct {
   uint64_t idx;
 	uint64_t align_length;
   int64_t template_len;
-  char* tag;
+	uint64_t trim_left[2];    // Note by how much the reads have been trimmed from it's original length
+	uint64_t trim_right[2];
+  gt_string* tag;
   gt_string* seq_name;
   gt_string* read[2];
   gt_string* qualities[2];
+  gt_vector* orig_pos[2];
   gt_vector* mismatches[2];
   uint8_t mapq[2];
   uint8_t sam_tp;
   uint8_t sam_tq;
+	gt_filter_reason filtered;
   gt_strand orientation;
   gt_bs_strand bs_strand;
   UT_hash_handle hh;  
 } align_details;
 
-GT_INLINE gt_status gt_isp_quick_parse_bs_sam_alignment(const char** const text_line, align_details *al, const uint64_t thresh, const uint64_t max_template_len, bool* reverse);
+GT_INLINE gt_status gt_isp_quick_parse_bs_sam_alignment(const char** const text_line, align_details *al, const uint64_t thresh, const uint64_t max_template_len, bool keep_unmatched, bool* reverse);
 
 #endif /* GT_INPUT_SAM_PARSER_H_ */

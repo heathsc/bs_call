@@ -316,6 +316,7 @@ gt_status gt_tprintf(const char* format,...);
 #define GT_ERROR_FILE_BZIP2_OPEN "Could not open BZIPPED file '%s'"
 #define GT_ERROR_FILE_BZIP2_NO_BZLIB "Could not open BZIPPED file '%s': no bzlib support compiled in"
 #define GT_ERROR_FILE_FDOPEN "Could not fdopen file descriptor"
+#define GT_ERROR_FILE_XZIP_OPEN "Could not open XZIPPED file '%s'"
 
 // Pipe errors
 #define GT_ERROR_PIPE_BAD_PIPE "Invalid pipe command: '%s'"

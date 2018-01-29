@@ -1,7 +1,7 @@
 #==================================================================================================
 # PROJECT: bs_call
 # FILE: Makefile.mk
-# DATE: 02/05/2017
+# DATE: 25/01/2018
 # AUTHOR(S): Simon Heath (simon.heath@gmail.com) and Marcos Fernandez (marcos.fernandez@cnag.crg.eu)
 # DESCRIPTION: Makefile definitions' file
 #==================================================================================================
@@ -11,7 +11,7 @@ include ../Gsl.mk
 
 
 # Utilities
-CC=/usr/bin/gcc
+CC=gcc --std=gnu99
 AR=ar
 
 # Folders
@@ -29,7 +29,7 @@ HAVE_OPENMP = 1
 GEMTOOLS_INC = -I../GEMTools/include -I../GEMTools/resources/include
 GEMTOOLS_LIBS = -L../GEMTools/lib -lgemtools
 
-GENERAL_FLAGS=-fPIC -Wall -msse4 -std=gnu99
+GENERAL_FLAGS=-fPIC -Wall
 ifeq ($(HAVE_ZLIB),1)
 GENERAL_FLAGS:=$(GENERAL_FLAGS) -DHAVE_ZLIB
 endif
@@ -40,13 +40,16 @@ ifeq ($(HAVE_OPENMP),1)
 GENERAL_FLAGS:=$(GENERAL_FLAGS) -DHAVE_OPENMP
 endif
 
-OPTIMIZATION_FLAGS=-O3 -g # -fomit-frame-pointer -ftree-vectorize
+OPTIMIZATION_FLAGS=-O3
 ARCH_FLAGS_OPTIMIZATION_FLAGS= # -msse3 -mssse3 -msse4.2
 
-INCLUDE_FLAGS=-I$(FOLDER_INCLUDE) $(GEMTOOLS_INC) $(GSL_INC)
-LIB_PATH_FLAGS=$(GEMTOOLS_LIBS) $(GSL_LIB)
+BS_CALL_INCLUDE_FLAGS=-I$(FOLDER_INCLUDE) $(GEMTOOLS_INC) $(GSL_INC)
+DBSNP_INCLUDE_FLAGS=-I$(FOLDER_INCLUDE)
+
+BS_CALL_LIB_PATH_FLAGS=$(GEMTOOLS_LIBS) $(GSL_LIB)
+DBSNP_LIB_PATH_FLAGS=
 
 SUPPRESS_CHECKS=-DNDEBUG -DGT_NO_CONSISTENCY_CHECKS
-DEBUG_FLAGS=-g -DGT_DEBUG
+DEBUG_FLAGS=-g -ggdb3 -rdynamic -DGT_DEBUG
 
 PLATFORM=$(shell uname)

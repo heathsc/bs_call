@@ -110,21 +110,24 @@ GT_INLINE void gt_segmented_sequence_append_string(gt_segmented_sequence* const 
 GT_INLINE gt_status gt_segmented_sequence_get_sequence(
     gt_segmented_sequence* const sequence,const uint64_t position,const uint64_t length,gt_string* const string) {
   GT_SEGMENTED_SEQ_CHECK(sequence);
-  GT_SEGMENTED_SEQ_POSITION_CHECK(sequence,position);
+//  GT_SEGMENTED_SEQ_POSITION_CHECK(sequence,position);
   GT_STRING_CHECK(string);
   GT_ZERO_CHECK(length);
+	uint64_t position1 = position >= sequence->sequence_total_length ? sequence->sequence_total_length : position;
   // Clear string
   gt_string_clear(string);
-  // Check position
-  if (gt_expect_false(position >= sequence->sequence_total_length)) return GT_SEQUENCE_POS_OUT_OF_RANGE;
   // Retrieve String
   uint64_t i=0;
   gt_segmented_sequence_iterator sequence_iterator;
-  gt_segmented_sequence_new_iterator(sequence,position,GT_ST_FORWARD,&sequence_iterator);
+  gt_segmented_sequence_new_iterator(sequence,position1,GT_ST_FORWARD,&sequence_iterator);
   while (i<length && !gt_segmented_sequence_iterator_eos(&sequence_iterator)) {
     gt_string_append_char(string,gt_segmented_sequence_iterator_next(&sequence_iterator));
     ++i;
   }
+	while(i < length) {
+		gt_string_append_char(string,'N');
+		i++;
+	}
   gt_string_append_eos(string);
   return (i==length) ? GT_SEQUENCE_OK : GT_SEQUENCE_CHUNK_OUT_OF_RANGE;
 }

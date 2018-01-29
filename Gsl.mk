@@ -7,7 +7,7 @@
 #==================================================================================================
 
 #1. MODIFY HERE THE GSL LIBRARY LOCATION. FOR Example: GSL_LIB = -L/path/to/gsl/lib
-GSL_LIB = -L/apps/GSL/2.3/lib/
+GSL_LIB = -L/apps/GSL/2.4/lib/
 #1. MODIFY HERE THE GSL HEADERS LOCATION. FOR Example: GSL_LIB = -L/path/to/gsl/include
-GSL_INC = -I/apps/GSL/2.3/include/
+GSL_INC = -I/apps/GSL/2.4/include/
 

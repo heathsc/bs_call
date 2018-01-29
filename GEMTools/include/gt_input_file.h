@@ -36,8 +36,8 @@
 /*
  * GT Input file
  */
-typedef enum { FASTA, FASTQ, MAP, SAM, FILE_FORMAT_UNKNOWN } gt_file_format;
-typedef enum { STREAM, REGULAR_FILE, MAPPED_FILE, GZIPPED_FILE, BZIPPED_FILE } gt_file_type;
+typedef enum { FASTA, FASTQ, MAP, SAM, GENERIC, FILE_FORMAT_UNKNOWN } gt_file_format;
+typedef enum { STREAM, REGULAR_FILE, MAPPED_FILE, GZIPPED_FILE, BZIPPED_FILE, XZIPPED_FILE } gt_file_type;
 typedef struct {
   /* Input file */
   char* file_name;
@@ -81,6 +81,7 @@ gt_status gt_input_file_close(gt_input_file* const input_file);
 #define gt_input_file_map_open(file_name,mmap_file) gt_input_file_general_open(file_name,mmap_file,MAP)
 #define gt_input_file_fasta_open(file_name,mmap_file) gt_input_file_general_open(file_name,mmap_file,FASTA)
 #define gt_input_file_sam_open(file_name,mmap_file) gt_input_file_general_open(file_name,mmap_file,SAM)
+#define gt_input_file_generic_open(file_name,mmap_file) gt_input_file_general_open(file_name,mmap_file,GENERIC)
 
 /* Format detection */
 gt_file_format gt_input_file_detect_file_format(gt_input_file* const input_file);
