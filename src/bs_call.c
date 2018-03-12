@@ -1630,26 +1630,11 @@ gt_status input_sam_parser_get_template_vector(
     if ((error_code = gt_isp_read_tag(text_line, text_line, tag)))
       return error_code;
     // Parse SAM Alignment
+    bool clear_al = true;
     if (!al) {
       if (gt_vector_get_used(free_list)) {
         al = *(gt_vector_get_last_elm(free_list, align_details *));
         gt_vector_dec_used(free_list);
-        gt_string_clear(al->tag);
-        gt_string_clear(al->seq_name);
-        if (al->read[0]) {
-          gt_string_clear(al->read[0]);
-          gt_string_clear(al->qualities[0]);
-          gt_vector_clear(al->mismatches[0]);
-        }
-        if (al->read[1]) {
-          gt_string_clear(al->read[1]);
-          gt_string_clear(al->qualities[1]);
-          gt_vector_clear(al->mismatches[1]);
-        }
-	if(al->orig_pos[0]) gt_vector_clear(al->orig_pos[0]);
-	if(al->orig_pos[1]) gt_vector_clear(al->orig_pos[1]);
-	gt_vector_clear(al->mismatches[0]);
-	gt_vector_clear(al->mismatches[1]);
       } else {
 	//				n_align++;
         al = gt_malloc(sizeof(align_details));
@@ -1658,10 +1643,30 @@ gt_status input_sam_parser_get_template_vector(
         al->mismatches[0] = gt_vector_new(8, sizeof(gt_misms));
         al->mismatches[1] = gt_vector_new(8, sizeof(gt_misms));
 	al->tag = gt_string_new(32);
+	clear_al = false;
       }
-      al->mapq[0] = al->mapq[1] = 0;
-      al->trim_left[0] = al->trim_left[1] = al->trim_right[0] = al->trim_right[1] = 0;
     }
+    if(clear_al) {
+      gt_string_clear(al->tag);
+      gt_string_clear(al->seq_name);
+      if (al->read[0]) {
+	gt_string_clear(al->read[0]);
+	gt_string_clear(al->qualities[0]);
+	gt_vector_clear(al->mismatches[0]);
+      }
+      if (al->read[1]) {
+	gt_string_clear(al->read[1]);
+	gt_string_clear(al->qualities[1]);
+	gt_vector_clear(al->mismatches[1]);
+      }
+      if(al->orig_pos[0]) gt_vector_clear(al->orig_pos[0]);
+      if(al->orig_pos[1]) gt_vector_clear(al->orig_pos[1]);
+      gt_vector_clear(al->mismatches[0]);
+      gt_vector_clear(al->mismatches[1]);
+    }
+    al->mapq[0] = al->mapq[1] = 0;
+    al->trim_left[0] = al->trim_left[1] = al->trim_right[0] = al->trim_right[1] = 0;
+    al->forward_position = al->reverse_position = 0;
     bool reverse;
     error_code = gt_isp_quick_parse_bs_sam_alignment(
 						     text_line, al, param->mapq_thresh, param->max_template_len, param->keep_unmatched, &reverse);
@@ -1712,11 +1717,11 @@ gt_status input_sam_parser_get_template_vector(
       continue;
     }
     bool insert;
-    if(al->alignment_flag & GT_SAM_FLAG_MULTIPLE_SEGMENTS) {
+    if((al->alignment_flag & GT_SAM_FLAG_MULTIPLE_SEGMENTS) && al->forward_position > 0 && al->reverse_position > 0) {
       if (reverse)
-	insert = al->forward_position > al->reverse_position ? true : false;
+	insert = al->forward_position > al->reverse_position;
       else
-	insert = al->forward_position < al->reverse_position ? true : false;
+	insert = al->forward_position < al->reverse_position;
       if (al->forward_position == al->reverse_position) {
 	insert = false;
 	if (!new_block) {
@@ -1732,9 +1737,11 @@ gt_status input_sam_parser_get_template_vector(
     }
     if (new_block == false && insert == true) {
       if(start_pos > 0) {
-	if (al->forward_position > max_pos && al->reverse_position > max_pos) {
-	  if(al->forward_position - max_pos > 8) new_block = true;
-	}
+	if(al->forward_position > 0) {
+	  if(al->forward_position > max_pos && (al->reverse_position > max_pos || al->reverse_position == 0)) {
+	    if(al->forward_position - max_pos > 8) new_block = true;
+	  }
+	} else if(al->reverse_position > max_pos && al->reverse_position - max_pos > 8) new_block = true;
       }
     }
     if (new_block == true) {
@@ -1824,6 +1831,7 @@ gt_status input_sam_parser_get_template_vector(
 	  gt_vector *tv = thash->mismatches[ix];
 	  thash->mismatches[ix] = al->mismatches[ix];
 	  al->mismatches[ix] = tv;
+	  assert(al->forward_position = thash->forward_position && al->reverse_position = thash->reverse_position);
 	} else {
 	  if(param->keep_unmatched) {
 	    if(al->forward_position > 0) x = al->forward_position + al->align_length;
