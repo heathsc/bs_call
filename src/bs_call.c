@@ -1833,6 +1833,7 @@ gt_status input_sam_parser_get_template_vector(
 	  al->mismatches[ix] = tv;
 	  assert(al->forward_position = thash->forward_position && al->reverse_position = thash->reverse_position);
 	} else {
+	  if(param->stats) param->stats->filter_cts[14]++;
 	  if(param->keep_unmatched) {
 	    if(al->forward_position > 0) x = al->forward_position + al->align_length;
 	    else x = al->reverse_position + al->align_length;
@@ -1844,9 +1845,9 @@ gt_status input_sam_parser_get_template_vector(
 	    gt_vector_set_elm(align_list, al->idx, align_details *, al);
 	    al = 0;
 	  } else {
-	    //						fprintf(stdout, "Warning not found: " PRIgts " %" PRIu64 " %" PRIu64 " %c\n",
-	    //										PRIgts_content(tag), al->forward_position, al->reverse_position,
-	    //										al->orientation == FORWARD ? '+' : '-');
+		  fprintf(stdout, "Warning not found: " PRIgts " %" PRIu64 " %" PRIu64 " %c\n",
+					 PRIgts_content(tag), al->forward_position, al->reverse_position,
+					 al->orientation == FORWARD ? '+' : '-');
 	  }
 	}
       } else {
@@ -2373,7 +2374,7 @@ static int sort_cov_stats(gt_cov_stats *a, gt_cov_stats *b) {
 static void output_stats(sr_param *par) {
   static char *mut_type[] = {"A>C", "A>G", "A>T", "C>A", "C>G", "C>T", "G>A", "G>C", "G>T", "T>A", "T>C", "T>G"};		
   static char *filter_names[] = {
-    "Passed", "Unmapped", "QC_Flags", "SecondaryAlignment", "MateUnmapped", "Duplicate", "NoPosition", "NoMatePosition", "MismatchContig", "BadOrientation", "LargeInsertSize", "NoSequence", "LowMAPQ", "NotCorrectlyAligned"
+    "Passed", "Unmapped", "QC_Flags", "SecondaryAlignment", "MateUnmapped", "Duplicate", "NoPosition", "NoMatePosition", "MismatchContig", "BadOrientation", "LargeInsertSize", "NoSequence", "LowMAPQ", "NotCorrectlyAligned", "PairNotFound"
   };
   static char *base_filters[] = {
     "Passed", "Trimmed", "Clipped", "Overlapping", "LowQuality"
@@ -2387,7 +2388,7 @@ static void output_stats(sr_param *par) {
   fprintf(fp, "\t\"date\": \"%02d/%02d/%04d\",\n", tt->tm_mday, tt->tm_mon + 1, tt->tm_year + 1900);
   fputs("\t\"filterStats\": {\n\t\t\"ReadLevel\": {\n", fp);
   fprintf(fp, "\t\t\t\"%s\": {\n\t\t\t\t\"Reads\": %" PRIu64 ",\n\t\t\t\t\"Bases\": %" PRIu64 "\n\t\t\t}", filter_names[0], stats->filter_cts[0], stats->filter_bases[0]);
-  for(int i = 1; i < 14; i++) {
+  for(int i = 1; i < 15; i++) {
     if(stats->filter_cts[i] > 0) {
       fprintf(fp, ",\n\t\t\t\"%s\": {\n\t\t\t\t\"Reads\": %" PRIu64 ",\n\t\t\t\t\"Bases\": %" PRIu64 "\n\t\t\t}", filter_names[i], stats->filter_cts[i], stats->filter_bases[i]);
     }

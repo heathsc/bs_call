@@ -90,7 +90,7 @@ typedef struct {
   uint64_t mut_counts[12][2];
   uint64_t dbSNP_mut_counts[12][2];
   uint64_t qual[4][256];
-  uint64_t filter_cts[14];
+  uint64_t filter_cts[15];
   uint64_t filter_bases[14];
   uint64_t base_filter[5];
   gt_vector *meth_profile;
