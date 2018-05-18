@@ -36,9 +36,8 @@ endif
 BS_CALL_OBJ = ${BS_CALL_SRC:.c=.o}
 DBSNP_OBJ = ${DBSNP_SRC:.c=.o}
 
-all: $(BIN)
+all: setup $(BIN)
 
-$(FOLDER_BIN)/bs_call: setup 
 $(FOLDER_BIN)/bs_call: CFLAGS= $(GENERAL_FLAGS) $(SUPPRESS_CHECKS) $(OPTIMIZATION_FLAGS) $(BS_CALL_INCLUDE_FLAGS)
 $(FOLDER_BIN)/bs_call: $(BS_CALL_OBJ) $(addprefix $(FOLDER_INCLUDE)/, $(BS_CALL_INC))
 	$(CC) $(CFLAGS)  -o $@ $(BS_CALL_OBJ) $(BS_CALL_LIB_PATH_FLAGS) $(BS_CALL_LIBS)
@@ -49,7 +48,7 @@ $(FOLDER_BIN)/dbSNP_idx: $(DBSNP_OBJ) $(addprefix $(FOLDER_INCLUDE)/, $(DBSNP_IN
 
 setup:
 	mkdir -p $(FOLDER_BIN)
-
+	
 clean: 
 	rm -f $(BS_CALL_OBJ) $(DBSNP_OBJ) $(BIN) a.out *~
 
