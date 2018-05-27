@@ -56,7 +56,6 @@ sr_param param = {
   .under_conv = DEFAULT_UNDER_CONVERSION,
   .over_conv = DEFAULT_OVER_CONVERSION,
   .ref_bias = DEFAULT_REF_BIAS,
-  .is_paired = false,
   .no_split = false,
   .extra_stats = false,
   .keep_duplicates = false,
@@ -2097,7 +2096,7 @@ gt_status bs_call_process(sr_param *param) {
   gt_buffered_input_file *buffered_input =
     gt_buffered_input_file_new(input_file);
   gt_sam_parser_attributes *input_sam_attributes =
-    gt_input_sam_parser_attributes_new(param->is_paired);
+    gt_input_sam_parser_attributes_new();
 
   fill_base_prob_table();
   process_end = print_end = false;
@@ -2730,9 +2729,6 @@ gt_status parse_arguments(int argc, char **argv) {
       param.realign_tol = atol(optarg);
       break;
       /* IO */
-    case 'p':
-      param.is_paired = true;
-      break;
     case 'o':
       param.output_prefix = optarg;
       break;

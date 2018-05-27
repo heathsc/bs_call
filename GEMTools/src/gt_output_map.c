@@ -710,6 +710,8 @@ GT_INLINE gt_status gt_output_map_gprint_mismatch_summary_(gt_generic_printer* c
       case INS:
         gt_gprintf(gprinter,"  INS.%02lu<+%02lu>",misms->position,misms->size);
         break;
+	  case SOFT:
+		 break;
     }
   }
   gt_gprintf(gprinter,"\n");
@@ -808,6 +810,7 @@ GT_INLINE gt_status gt_output_map_gprint_map_block_pretty(
             gt_string_append_char(pattern_scheme,pattern[pattern_centinel++]);
           }
           break;
+		 case SOFT: break;
       }
       ++misms_offset;
       GT_MAP_CHECK__RELOAD_MISMS_PTR(map,misms_offset,misms,num_misms);

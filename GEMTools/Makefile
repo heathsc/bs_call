@@ -14,29 +14,17 @@ all: release
 
 static:	setup
 	$(MAKE) --directory=src
-	$(MAKE) --directory=resources/src
-	$(MAKE) --directory=tools static
 
 release: setup	
 	$(MAKE) --directory=src
-	$(MAKE) --directory=resources/src
-	$(MAKE) --directory=tools
 
 debug: setup
 	$(MAKE) --directory=src   debug
-	$(MAKE) --directory=resources/src   debug
-	$(MAKE) --directory=tools debug
 
-check: setup debug
-	$(MAKE) --directory=test  check
-
-shcheck: setup debug
-	$(MAKE) --directory=test  shtest
 	
 setup: 
 	@mkdir -p $(FOLDER_BIN) $(FOLDER_BUILD) $(FOLDER_LIB)
 
 clean:
-	$(MAKE) --directory=test  clean
 	@rm -rf $(FOLDER_BIN) $(FOLDER_BUILD) $(FOLDER_LIB)
 	

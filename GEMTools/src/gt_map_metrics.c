@@ -19,6 +19,7 @@ GT_INLINE uint64_t gt_map_get_length(gt_map* const map) {
   GT_MISMS_ITERATE(map,misms_it) {
     switch (misms_it->misms_type) {
       case MISMS: break;
+	  case SOFT: break;
       case INS:
         length += gt_misms_get_size(misms_it);
         break;
@@ -87,6 +88,7 @@ GT_INLINE uint64_t gt_map_get_bases_aligned(gt_map* const map) {
   GT_MISMS_ITERATE(map,misms_it) {
     switch (misms_it->misms_type) {
       case INS:
+	  case SOFT:
         break;
       case MISMS:
         --bases_aligned;
@@ -130,6 +132,7 @@ GT_INLINE uint64_t gt_map_get_levenshtein_distance(gt_map* const map) {
       case DEL:
         lev_distance += gt_misms_get_size(misms_it);
         break;
+	  case SOFT: break;
     }
   }
   return lev_distance;

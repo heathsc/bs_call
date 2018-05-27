@@ -18,7 +18,6 @@ gt_option bs_call_options[] = {
 	{ 'l', "max-template-length", GT_OPT_REQUIRED, GT_OPT_INT, 1, true, "<int> ","Set maximum template length for a pair (default "STRING(DEFAULT_MAX_TEMPLATE_LEN)")"},
   { 'T', "realign-tolerance", GT_OPT_REQUIRED, GT_OPT_INT, 1, true, "<int> ","Tolerance for realignment positions (default "STRING(DEFAULT_REALIGN_TOL)")"},
   /* I/O */
-  { 'p', "paired-end", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 2, true, "" , "" },
   { 'z', "gzip", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 2, true, "" , "" },
   { 'j', "bzip2", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 2, true, "" , "" },
   { 'Z', "no-compress", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 2, true, "" , "" },
@@ -44,7 +43,7 @@ gt_option bs_call_options[] = {
   {  0, 0, 0, 0, 0, false, "", ""}
 };
 
-char* bs_call_options_short = "N1dsABD:R:L:pzjZo:r:vt:h";
+char* bs_call_options_short = "N1dsABD:R:L:zjZo:r:vt:h";
 
 char* bs_call_groups[] = {
   /*  0 */ "Null",

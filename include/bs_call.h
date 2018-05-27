@@ -116,7 +116,6 @@ typedef struct {
   ctg_hash *species_hash;
   bool mmap_input;
   /* Control flags */
-  bool is_paired;
   bool no_split;
   bool extra_stats;
   bool keep_duplicates;

@@ -16,7 +16,7 @@
 /*
  * SAM parser attributes
  */
-GT_INLINE gt_sam_parser_attributes *gt_input_sam_parser_attributes_new() {
+GT_INLINE gt_sam_parser_attributes *gt_input_sam_parser_attributes_new(void) {
   gt_sam_parser_attributes *attributes = gt_alloc(gt_sam_parser_attributes);
   gt_input_sam_parser_attributes_reset_defaults(attributes);
   return attributes;
@@ -1342,7 +1342,6 @@ GT_INLINE gt_status gt_isp_quick_parse_sam_cigar(const char **const text_line,
       break;
     }
   }
-  uint64_t num_misms = gt_vector_get_used(al->mismatches[ix]);
 	al->align_length = position;
 #if 0
   if (num_misms) {

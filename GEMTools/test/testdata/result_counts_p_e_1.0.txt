@@ -1,2 +1,0 @@
-Gene_A	4
-Gene_B	2

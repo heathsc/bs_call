@@ -51,6 +51,7 @@ GT_INLINE gt_status gt_map_block_check_alignment(
           if (pattern_centinel+misms->size>pattern_length) return GT_MAP_CHECK_ALG_DEL_OUT_OF_SEQ;
           pattern_centinel+=misms->size;
           break;
+		 case SOFT: break;
       }
       ++misms_offset;
       GT_MAP_CHECK__RELOAD_MISMS_PTR(map,misms_offset,misms,num_misms);
@@ -141,6 +142,7 @@ GT_INLINE gt_status gt_map_block_recover_mismatches(
           if (pattern_centinel+misms.size>pattern_length) return GT_MAP_CHECK_ALG_DEL_OUT_OF_SEQ;
           pattern_centinel+=misms.size;
           break;
+		 case SOFT: break;
       }
       // Add the misms + reload old misms
       gt_map_add_misms(map,&misms);

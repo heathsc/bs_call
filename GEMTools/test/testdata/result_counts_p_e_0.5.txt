@@ -1,3 +1,0 @@
-Gene_A	6
-Gene_B	4
-Gene_C	2

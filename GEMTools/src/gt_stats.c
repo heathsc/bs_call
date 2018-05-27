@@ -753,6 +753,7 @@ GT_INLINE void gt_stats_make_maps_error_profile(
             total_levenshtein += misms->size;
             total_ins_length += misms->size;
             break;
+			case SOFT: break;
         }
       }
       multi_block_offset += gt_map_get_base_length(map_block);

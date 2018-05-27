@@ -296,6 +296,7 @@ GT_INLINE uint64_t gt_map_get_num_mismatch_bases(gt_map* const map) {
         break;
       case INS:
       case DEL:
+	   case SOFT:
         break;
     }
   }
@@ -306,7 +307,9 @@ GT_INLINE uint64_t gt_map_get_num_indels(gt_map* const map) {
   uint64_t count = 0;
   GT_MISMS_ITERATE(map,misms_it) {
     switch (misms_it->misms_type) {
-      case MISMS: break;
+      case MISMS:
+	   case SOFT:
+		  break;
       case INS:
       case DEL:
         ++count;
@@ -320,7 +323,9 @@ GT_INLINE uint64_t gt_map_get_num_insertions(gt_map* const map) {
   uint64_t count = 0;
   GT_MISMS_ITERATE(map,misms_it) {
     switch (misms_it->misms_type) {
-      case MISMS: break;
+      case MISMS:
+	   case SOFT:
+		 break;
       case INS:
         ++count;
         break;
@@ -334,7 +339,8 @@ GT_INLINE uint64_t gt_map_get_num_deletions(gt_map* const map) {
   uint64_t count = 0;
   GT_MISMS_ITERATE(map,misms_it) {
     switch (misms_it->misms_type) {
-      case MISMS: break;
+      case MISMS:
+      case SOFT:
       case INS:   break;
       case DEL:
         ++count;

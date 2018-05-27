@@ -60,6 +60,8 @@ uint64_t gt_map_calculate_gt_score(gt_alignment *al, gt_map *map,
       case DEL:
         score += indel_penalty;
         break;
+		 case SOFT:
+			break;
       }
     }
     if (gt_map_get_next_block(map_block))
