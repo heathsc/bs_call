@@ -1575,6 +1575,7 @@ gt_status input_sam_parser_get_template_vector(
   gt_vector_clear(align_list);
   gt_status error_code;
   char *curr_ctg = NULL, *old_ctg = NULL;
+  size_t curr_ctg_len = 0;
   bool chr_skip = false;
   bool new_contig = false;
   uint64_t max_pos = 0; // Position of righmost end of current pileup
@@ -1677,7 +1678,6 @@ gt_status input_sam_parser_get_template_vector(
 	  int ix = reverse ? 1 : 0;
 	  uint64_t l = al->read[ix] ? al->read[ix]->length : 0;
 	  param->stats->filter_bases[al->filtered] += l;
-	  //				fprintf(stderr,"A: FILTERED!\n");]
 	}
         continue;
       }
@@ -1690,15 +1690,15 @@ gt_status input_sam_parser_get_template_vector(
     gt_string_copy(al->tag, tag);
     bool new_block = false;
     new_contig = false;
-    if (!curr_ctg || strncmp(curr_ctg, gt_string_get_string(al->seq_name),
-                             gt_string_get_length(al->seq_name))) {
+    size_t l = gt_string_get_length(al->seq_name);    
+    if (!curr_ctg || (l != curr_ctg_len) || strncmp(curr_ctg, gt_string_get_string(al->seq_name), l)) {
       chr_skip = false;
       old_ctg = curr_ctg;
       new_contig = true;
-      uint64_t l = gt_string_get_length(al->seq_name);
       curr_ctg = gt_malloc(l + 1);
       memcpy(curr_ctg, gt_string_get_string(al->seq_name), l);
       curr_ctg[l] = 0;
+      curr_ctg_len = l;
       if (param->species_hash) {
         ctg_hash *tp;
         HASH_FIND_STR(param->species_hash, curr_ctg, tp);
