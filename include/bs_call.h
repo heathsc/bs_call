@@ -110,10 +110,10 @@ typedef struct {
   //  char *name_gem_index_file;
   char *output_prefix;
   char *sample_name;
-  char *species_filter;
   char *dbSNP_name;
   char *report_file;
-  ctg_hash *species_hash;
+  char *contig_bed;
+  ctg_hash *contig_hash;
   bool mmap_input;
   /* Control flags */
   bool no_split;

@@ -31,10 +31,10 @@ sr_param param = {
   //    .name_gem_index_file = NULL,
   .output_prefix = NULL,
   .sample_name = NULL,
-  .species_filter = NULL,
+  .contig_bed = NULL,
   .dbSNP_name = NULL,
   .report_file = NULL,
-  .species_hash = NULL,
+  .contig_hash = NULL,
   .mmap_input = false,
   .compress = NONE,
   .verbose = false,
@@ -59,7 +59,6 @@ sr_param param = {
   .no_split = false,
   .extra_stats = false,
   .keep_duplicates = false,
-
   .all_positions = false,
   .num_threads = 1,
   .sequence_archive = NULL,
@@ -1699,9 +1698,9 @@ gt_status input_sam_parser_get_template_vector(
       memcpy(curr_ctg, gt_string_get_string(al->seq_name), l);
       curr_ctg[l] = 0;
       curr_ctg_len = l;
-      if (param->species_hash) {
+      if (param->contig_hash) {
         ctg_hash *tp;
-        HASH_FIND_STR(param->species_hash, curr_ctg, tp);
+        HASH_FIND_STR(param->contig_hash, curr_ctg, tp);
         if (!tp)
           chr_skip = true;
       }
@@ -1992,6 +1991,35 @@ void print_vcf_header(sr_param *param) {
   if(param->dbSNP_header != NULL) {
     fprintf(fp, "##dbsnp=<%s>\n", param->dbSNP_header);
   }
+  if(param->contig_bed) {
+    FILE *cfp = fopen(param->contig_bed, "r");
+    if(!cfp) fprintf(stderr,"Could not open contig bed file '%s' for input\n", param->contig_bed);
+    else {
+      char *buf = NULL;
+      size_t buf_size = 0;
+      while(true) {
+	ssize_t l = getline(&buf, &buf_size, cfp);
+	if(l < 0) break;
+	char *p = strchr(buf, '\t');
+	if(p) *p = 0;
+	size_t sz = strlen(buf);
+	if(sz > 0) {
+	  char *ctg = gt_malloc(sz + 1);
+	  memcpy(ctg, buf, sz + 1);
+	  ctg_hash *tp = NULL;
+	  HASH_FIND_STR(param->contig_hash, ctg, tp);
+	  if (!tp) {
+	    tp = gt_alloc(ctg_hash);
+	    tp->flag = true;
+	    tp->ctg = ctg;
+	    HASH_ADD_KEYPTR(hh, param->contig_hash, ctg, sz, tp);
+	  } else free(ctg);
+	}
+      }
+      fclose(cfp);
+      if(buf != NULL) free(buf);
+    }
+  }
   GT_VECTOR_ITERATE(param->sam_headers->sequence_dictionary, header_record_p,
                     line_num, gt_sam_header_record *) {
     gt_sam_header_record *header_record = *header_record_p;
@@ -2001,23 +2029,11 @@ void print_vcf_header(sr_param *param) {
     gt_string *len = gt_shash_get(header_record, "LN", gt_string);
     if (ctg && len) {
       gt_string *sp = gt_shash_get(header_record, "SP", gt_string);
-      if (param->species_filter) {
-        if (!sp) continue;
-        uint64_t l = gt_string_get_length(sp);
-        if (strncasecmp(gt_string_get_string(sp), param->species_filter, l))
-          continue;
-        l = gt_string_get_length(ctg);
-        char *ctg1 = gt_malloc(l + 1);
-        memcpy(ctg1, gt_string_get_string(ctg), l);
-        ctg1[l + 1] = 0;
+      if (param->contig_hash) {
+        uint64_t l = gt_string_get_length(ctg);
         ctg_hash *tp = NULL;
-        HASH_FIND_STR(param->species_hash, ctg1, tp);
-        if (!tp) {
-          tp = gt_alloc(ctg_hash);
-          tp->flag = true;
-          tp->ctg = ctg1;
-          HASH_ADD_KEYPTR(hh, param->species_hash, ctg1, l, tp);
-        }
+        HASH_FIND(hh, param->contig_hash, gt_string_get_string(ctg), l, tp);
+        if (tp == NULL) continue;
       }
       fprintf(fp, "##contig=<ID=" PRIgts ",length=" PRIgts, PRIgts_content(ctg),
               PRIgts_content(len));
@@ -2735,12 +2751,15 @@ gt_status parse_arguments(int argc, char **argv) {
     case 'n':
       param.sample_name = optarg;
       break;
-    case 'x':
-      param.species_filter = optarg;
-      break;
+      //    case 'x':
+      //      param.species_filter = optarg;
+      //      break;
     case 'r':
       param.name_reference_file = optarg;
       load_seq = 1;
+      break;
+    case 'C':
+      param.contig_bed = optarg;
       break;
       //    case 'I':
       //      param.name_gem_index_file = optarg;
