@@ -3319,7 +3319,9 @@ fi
 
 
 
-ac_config_files="$ac_config_files Makefile.mk"
+ac_config_files="$ac_config_files GEMTools/Makefile.mk"
+
+ac_config_files="$ac_config_files src/Makefile.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4026,7 +4028,8 @@ cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
 for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
-    "Makefile.mk") CONFIG_FILES="$CONFIG_FILES Makefile.mk" ;;
+    "GEMTools/Makefile.mk") CONFIG_FILES="$CONFIG_FILES GEMTools/Makefile.mk" ;;
+    "src/Makefile.mk") CONFIG_FILES="$CONFIG_FILES src/Makefile.mk" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

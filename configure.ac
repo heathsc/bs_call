@@ -19,5 +19,6 @@ fi
 AC_SUBST([gemtoolsinc])
 AC_SUBST([gemtoolslibs])
 
-AC_CONFIG_FILES([Makefile.mk])
+AC_CONFIG_FILES([GEMTools/Makefile.mk])
+AC_CONFIG_FILES([src/Makefile.mk])
 AC_OUTPUT
