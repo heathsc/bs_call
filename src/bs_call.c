@@ -2039,7 +2039,7 @@ void print_vcf_header(sr_param *param) {
 	  bc_p->str = gt_malloc(l);
 	  memcpy(bc_p->str, gt_string_get_string(bc), l);
 	  HASH_ADD_KEYPTR(hh, bc_dict, bc_p->str, l, bc_p);
-	  fprintf(fp, "##bs_call_sample_info = <ID=\"" PRIgts "\"", PRIgts_content(bc));
+	  fprintf(fp, "##bs_call_sample_info=<ID=\"" PRIgts "\"", PRIgts_content(bc));
 	  gt_string *sm = gt_shash_get(header_record, "SM", gt_string);
 	  if(sm != NULL) 	fprintf(fp, ",SM=\"" PRIgts "\"", PRIgts_content(sm));
 	  gt_string *ds = gt_shash_get(header_record, "DS", gt_string);
