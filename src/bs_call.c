@@ -2020,6 +2020,43 @@ void print_vcf_header(sr_param *param) {
       if(buf != NULL) free(buf);
     }
   }
+  {
+    typedef struct {
+      char *str;
+      UT_hash_handle hh;
+    } sdict;
+    sdict *bc_dict = NULL;
+    GT_VECTOR_ITERATE(param->sam_headers->read_group, header_record_p,
+		      line_num, gt_sam_header_record *) {
+      gt_sam_header_record *header_record = *header_record_p;
+      gt_string *bc = gt_shash_get(header_record, "BC", gt_string);
+      if(bc != NULL) {
+	sdict *bc_p = NULL;
+	uint64_t l = gt_string_get_length(bc);
+	HASH_FIND(hh, bc_dict, gt_string_get_string(bc), l, bc_p);
+	if(bc_p == NULL) {
+	  bc_p = gt_alloc(sdict);
+	  bc_p->str = gt_malloc(l);
+	  memcpy(bc_p->str, gt_string_get_string(bc), l);
+	  HASH_ADD_KEYPTR(hh, bc_dict, bc_p->str, l, bc_p);
+	  fprintf(fp, "##bs_call_sample_info = <ID=\"" PRIgts "\"", PRIgts_content(bc));
+	  gt_string *sm = gt_shash_get(header_record, "SM", gt_string);
+	  if(sm != NULL) 	fprintf(fp, ",SM=\"" PRIgts "\"", PRIgts_content(sm));
+	  gt_string *ds = gt_shash_get(header_record, "DS", gt_string);
+	  if(ds != NULL) 	fprintf(fp, ",DS=\"" PRIgts "\"", PRIgts_content(ds));
+	  fputs(">\n", fp);
+	}
+      }
+    }
+    if(bc_dict != NULL) {
+      sdict *tp, *tp1;
+      HASH_ITER(hh, bc_dict, tp, tp1) {
+	HASH_DEL(bc_dict,tp);
+	free(tp->str);
+	free(tp);
+      }
+    }
+  }
   GT_VECTOR_ITERATE(param->sam_headers->sequence_dictionary, header_record_p,
                     line_num, gt_sam_header_record *) {
     gt_sam_header_record *header_record = *header_record_p;
