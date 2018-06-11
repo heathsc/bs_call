@@ -2910,5 +2910,6 @@ int main(int argc, char *argv[]) {
     output_stats(&param);
     fclose(param.json_file);
   }
+  while(waitpid(-1, NULL, 0) > 0);
   return err == GT_STATUS_OK ? 0 : -1;
 }
