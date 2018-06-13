@@ -620,6 +620,8 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+GSLINC
+GSLLIBS
 gemtoolslibs
 gemtoolsinc
 HAVE_OPENMP
@@ -677,6 +679,7 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 with_gemtools
+with_gsl
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1297,6 +1300,7 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-gemtools=PATH    specify prefix directory for installed gemtool
                           package.
+  --with-gsl=PATH         specify prefix directory for installed gsl library.
 
 Some influential environment variables:
   CC          C compiler command
@@ -3314,6 +3318,23 @@ fi
 if test "x$with_gemtools" != "x"; then
       gemtoolslibs="-L$with_gemtools/lib -lgemtools"
 		gemtoolsinc="-I$with_gemtools/include -I$with_gemtools/resources/include"
+fi
+
+
+
+
+
+# Check whether --with-gsl was given.
+if test "${with_gsl+set}" = set; then :
+  withval=$with_gsl;
+fi
+
+if test "x$with_gsl" != "x"; then
+      GSLLIBS="-L$with_gsl/lib -lgsl -lgslcblas"
+		GSLINC="-I$with_gsl/include"
+else
+      GSLLIBS="-lgsl -lgslcblas"
+		GSLINC=""
 fi
 
 

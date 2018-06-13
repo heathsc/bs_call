@@ -6,9 +6,6 @@
 # DESCRIPTION: Makefile definitions' file
 #==================================================================================================
 
-#Include
-include ../Gsl.mk
-
 
 # Utilities
 CC=gcc --std=gnu99
@@ -43,10 +40,10 @@ endif
 OPTIMIZATION_FLAGS=-O3
 ARCH_FLAGS_OPTIMIZATION_FLAGS= # -msse3 -mssse3 -msse4.2
 
-BS_CALL_INCLUDE_FLAGS=-I$(FOLDER_INCLUDE) $(GEMTOOLS_INC) $(GSL_INC)
+BS_CALL_INCLUDE_FLAGS=-I$(FOLDER_INCLUDE) $(GEMTOOLS_INC) @GSLINC@
 DBSNP_INCLUDE_FLAGS=-I$(FOLDER_INCLUDE)
 
-BS_CALL_LIB_PATH_FLAGS=$(GEMTOOLS_LIBS) $(GSL_LIB)
+BS_CALL_LIB_PATH_FLAGS=$(GEMTOOLS_LIBS) @GSLLIBS@ -lm
 DBSNP_LIB_PATH_FLAGS=
 
 SUPPRESS_CHECKS=-DNDEBUG -DGT_NO_CONSISTENCY_CHECKS
