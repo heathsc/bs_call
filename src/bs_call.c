@@ -1912,7 +1912,7 @@ gt_status input_sam_parser_get_template_vector(
 	      }
 	      if(param->stats != NULL) {
 		param->stats->filter_cts[gt_flt_duplicate]++;
-		param->stats->filter_bases[gt_flt_none] += al->read[0]->length;
+		param->stats->filter_bases[gt_flt_none] += al->read[reverse ? 1 : 0]->length;
 	      }
 	      al_skip = true;
 	    }
