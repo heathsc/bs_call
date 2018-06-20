@@ -1579,7 +1579,8 @@ gt_status input_sam_parser_get_template_vector(
   bool new_contig = false;
   uint64_t max_pos = 0; // Position of righmost end of current pileup
   uint64_t start_pos = 0; // Position of leftmost end of current pileup
-  uint64_t read_idx = 0;
+  uint64_t read_idx = 0, curr_pos = 0, start_idx = 0;
+  
   //	uint64_t n_align = 0;
   gt_string *tag = gt_string_new(128);
   align_details *al = 0, *align_hash = 0;
@@ -1667,8 +1668,7 @@ gt_status input_sam_parser_get_template_vector(
     al->trim_left[0] = al->trim_left[1] = al->trim_right[0] = al->trim_right[1] = 0;
     al->forward_position = al->reverse_position = 0;
     bool reverse;
-    error_code = gt_isp_quick_parse_bs_sam_alignment(
-						     text_line, al, param->mapq_thresh, param->max_template_len, param->keep_unmatched, &reverse);
+    error_code = gt_isp_quick_parse_bs_sam_alignment(text_line, al, param->mapq_thresh, param->max_template_len, param->keep_unmatched, &reverse);
     gt_input_sam_parser_next_record(buffered_sam_input);
     if (error_code) {
       if (error_code == GT_ISP_SAM_FILTERED) {
@@ -1757,6 +1757,8 @@ gt_status input_sam_parser_get_template_vector(
       }
       insert = true;
       read_idx = 0;
+      start_idx = 0;
+      curr_pos = 0;
       int ix = gt_vector_get_used(align_list);
       if (ix) {
 	align_details **al_p = gt_vector_get_mem(align_list, align_details *);
@@ -1766,13 +1768,9 @@ gt_status input_sam_parser_get_template_vector(
 	ctg_waiting = strdup(new_contig ? old_ctg : curr_ctg);
 	y_waiting = max_pos;
 	gt_vector *new_free_list = free_list_waiting;
-	//				uint64_t t_align = ix + gt_vector_get_used(free_list) + (new_free_list != NULL ? gt_vector_get_used(new_free_list) : 0);
-	//				fprintf(stderr, "Parser(): n_align = %lu, t_align = %lu, ix = %d, ctg_waiting = %s (%p), align_list = %p, free_list_waiting = %p, max_pos = %lu\n",
-	//								n_align, t_align, ix, ctg_waiting, ctg_waiting, align_list, free_list_waiting, max_pos);
 	free_list_waiting = NULL;
 	align_list_waiting = align_list;
 	if(new_free_list != NULL) {
-	  //        process_template_vector(align_list, new_contig ? old_ctg : curr_ctg, max_pos, param);
 	  uint64_t used = gt_vector_get_used(free_list);
 	  ix = gt_vector_get_used(new_free_list);
 	  gt_vector_reserve(free_list, ix + used, false);
@@ -1789,7 +1787,6 @@ gt_status input_sam_parser_get_template_vector(
 	old_ctg = NULL;
 	new_contig = false;
       }
-      //     fprintf(stderr, "Reading new block\n");
       max_pos = start_pos = 0;
     }
     uint64_t x = al->forward_position;
@@ -1807,7 +1804,6 @@ gt_status input_sam_parser_get_template_vector(
       } else if(start_pos == 0 || x1 < start_pos) start_pos = x1;
     }
     if(al->alignment_flag & GT_SAM_FLAG_MULTIPLE_SEGMENTS) {
-      //			fprintf(stderr,"OOOK: %lu %lu %lu %lu\n", al->forward_position, al->reverse_position, start_pos, max_pos);
       if (insert == false) {
 	align_details *thash;
 	HASH_FIND(hh, align_hash, gt_string_get_string(al->tag), gt_string_get_length(al->tag), thash);
@@ -1860,12 +1856,38 @@ gt_status input_sam_parser_get_template_vector(
 	al = 0;
       }
     } else { // Single (non-paired) reads
-      al->idx = read_idx++; // Preserve read order after matching
-      gt_vector_reserve(align_list, al->idx + 1, false);
-      if (gt_vector_get_used(align_list) <= al->idx)
-	gt_vector_set_used(align_list, al->idx + 1);
-      gt_vector_set_elm(align_list, al->idx, align_details *, al);
-      al = 0;
+      bool al_skip = false;
+      if(!param->keep_duplicates) {
+	uint64_t pos = al->forward_position > 0 ? al->forward_position : al->reverse_position;
+	if(pos == curr_pos) {
+	  align_details **al_p = gt_vector_get_mem(align_list, align_details *);
+	  for(uint64_t ix = start_idx; ix < read_idx; ix++) {
+	    align_details *al1 = al_p[ix];
+	    if(al->forward_position == al1->forward_position && al->reverse_position == al1->reverse_position && al->bs_strand == al1->bs_strand) {
+	      if((al->mapq[0] < al1->mapq[0]) || (al->mapq[0] == al1->mapq[0] && get_al_qual(al) < get_al_qual(al1))) {
+		al_p[ix] = al;
+		al = al1;
+	      }
+	      if(param->stats != NULL) {
+		param->stats->filter_cts[gt_flt_duplicate]++;
+		param->stats->filter_bases[gt_flt_none] += al->read[0]->length;
+	      }
+	      al_skip = true;
+	    }
+	  }
+	} else{
+	  curr_pos = pos;
+	  start_idx = read_idx;
+	}
+      }
+      if(!al_skip) {
+	al->idx = read_idx++; // Preserve read order after matching
+	gt_vector_reserve(align_list, al->idx + 1, false);
+	if (gt_vector_get_used(align_list) <= al->idx)
+	  gt_vector_set_used(align_list, al->idx + 1);
+	gt_vector_set_elm(align_list, al->idx, align_details *, al);
+	al = 0;
+      }
     }
   } while (1);
   return GT_ISP_OK;
