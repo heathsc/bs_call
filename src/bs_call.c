@@ -9,6 +9,7 @@
 #define BS_CALL_VERSION "2.01"
 
 #include <stdio.h>
+#include <sys/wait.h>
 #include <getopt.h>
 #include <ctype.h>
 #include <pthread.h>
@@ -1828,32 +1829,73 @@ gt_status input_sam_parser_get_template_vector(
 	  assert(al->forward_position = thash->forward_position && al->reverse_position = thash->reverse_position);
 	} else {
 	  if(param->stats) param->stats->filter_cts[14]++;
-	  if(param->keep_unmatched) {
-	    if(al->forward_position > 0) x = al->forward_position + al->align_length;
-	    else x = al->reverse_position + al->align_length;
-	    if(x > max_pos) max_pos = x;
-	    al->idx = read_idx++; // Preserve read order after matching
-	    gt_vector_reserve(align_list, al->idx + 1, false);
-	    if (gt_vector_get_used(align_list) <= al->idx)
-	      gt_vector_set_used(align_list, al->idx + 1);
-	    gt_vector_set_elm(align_list, al->idx, align_details *, al);
-	    al = 0;
-	  } else {
-		  fprintf(stdout, "Warning not found: " PRIgts " %" PRIu64 " %" PRIu64 " %c\n",
-					 PRIgts_content(tag), al->forward_position, al->reverse_position,
-					 al->orientation == FORWARD ? '+' : '-');
+	  bool al_skip = false;
+	  if(!param->keep_duplicates) {
+	    x = reverse ? al->reverse_position : al->forward_position;
+	    if(x >= start_pos) al_skip = true;
+	  }
+	  if(!al_skip) {
+	    if(param->keep_unmatched) {
+	      if(al->forward_position > 0) x = al->forward_position + al->align_length;
+	      else x = al->reverse_position + al->align_length;
+	      if(x > max_pos) max_pos = x;
+	      al->idx = read_idx++; // Preserve read order after matching
+	      gt_vector_reserve(align_list, al->idx + 1, false);
+	      if (gt_vector_get_used(align_list) <= al->idx)
+		gt_vector_set_used(align_list, al->idx + 1);
+	      gt_vector_set_elm(align_list, al->idx, align_details *, al);
+	      al = 0;
+	    } else {
+	      fprintf(stdout, "Warning not found: " PRIgts " %" PRIu64 " %" PRIu64 " %c\n",
+		      PRIgts_content(tag), al->forward_position, al->reverse_position,
+		      al->orientation == FORWARD ? '+' : '-');
+	    }
 	  }
 	}
       } else {
 	// Here we have a forward facing pair, so we need to store end to be
 	// matched up later
-	al->idx = read_idx++; // Preserve read order after matching
-	align_details *thash;
-	HASH_FIND(hh, align_hash, gt_string_get_string(al->tag), gt_string_get_length(al->tag), thash);
-	gt_cond_fatal_error(thash != NULL, PARSE_SAM_DUPLICATE_SEQUENCE_TAG,
-			    PRIgts_content(tag));
-	HASH_ADD_KEYPTR(hh, align_hash, gt_string_get_string(al->tag), gt_string_get_length(al->tag), al);
-	al = 0;
+	// But first we check for duplicates
+	bool al_skip = false;
+	if(!param->keep_duplicates) {
+	  uint64_t pos = al->forward_position > 0 ? al->forward_position : al->reverse_position;
+	  if(pos == curr_pos) {
+	    align_details **al_p = gt_vector_get_mem(align_list, align_details *);
+	    for(uint64_t ix = start_idx; ix < read_idx; ix++) {
+	      align_details *al1 = al_p[ix];
+	      if(al->forward_position == al1->forward_position && al->reverse_position == al1->reverse_position && al->bs_strand == al1->bs_strand) {
+		int maxq = 0, maxq1 = 0;
+		int kn = 0, kn1 = 0;
+		for(int ix1 = 0; ix1 < 2; ix1++) {
+		  if(al->read[ix1] && al->read[ix1]->length) { maxq += al->mapq[ix1]; kn++; }
+		  if(al1->read[ix1] && al1->read[ix1]->length) { maxq1 += al1->mapq[ix1]; kn1++; }
+		}
+		maxq /= kn;
+		maxq1 /= kn1;
+		if((maxq < maxq1) || (maxq == maxq1 && get_al_qual(al) < get_al_qual(al1))) {
+		  al_p[ix] = al;
+		  al = al1;
+		}
+		if(param->stats != NULL) {
+		  uint64_t len1 = al->read[0] ? al->read[0]->length : 0;
+		  uint64_t len2 = al->read[1] ? al->read[1]->length : 0;
+		  bool paired = len1 && len2;
+		  param->stats->filter_cts[gt_flt_duplicate] += paired ? 2 : 1;
+		  param->stats->filter_bases[gt_flt_none] += len1 + len2;
+		}
+		al_skip = true;
+	      }
+	    }
+	  }
+	  if(!al_skip) {
+	    al->idx = read_idx++; // Preserve read order after matching
+	    align_details *thash;
+	    HASH_FIND(hh, align_hash, gt_string_get_string(al->tag), gt_string_get_length(al->tag), thash);
+	    gt_cond_fatal_error(thash != NULL, PARSE_SAM_DUPLICATE_SEQUENCE_TAG,PRIgts_content(tag));
+	    HASH_ADD_KEYPTR(hh, align_hash, gt_string_get_string(al->tag), gt_string_get_length(al->tag), al);
+	    al = 0;
+	  }
+	}
       }
     } else { // Single (non-paired) reads
       bool al_skip = false;
@@ -1881,6 +1923,7 @@ gt_status input_sam_parser_get_template_vector(
 	}
       }
       if(!al_skip) {
+	//	fprintf(stderr,"pos = %lu, read_idx = %lu, skip = %s\n", curr_pos, read_idx, al_skip ? "yes" : "no");
 	al->idx = read_idx++; // Preserve read order after matching
 	gt_vector_reserve(align_list, al->idx + 1, false);
 	if (gt_vector_get_used(align_list) <= al->idx)
