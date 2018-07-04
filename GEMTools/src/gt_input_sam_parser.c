@@ -1419,8 +1419,9 @@ gt_isp_quick_parse_bs_sam_alignment(const char **const text_line,
 			else if(fg & GT_SAM_FLAG_NEXT_UNMAPPED) al->filtered = gt_flt_mate_unmapped;
 			else if(fg & GT_SAM_FLAG_NOT_PASSING_QC) al->filtered = gt_flt_qc;
 			else if(fg & GT_SAM_FLAG_PCR_OR_OPTICAL_DUPLICATE) al->filtered = gt_flt_duplicate;
-			else al->filtered = gt_flt_not_correctly_aligned;
-//			return GT_ISP_SAM_FILTERED;
+			else {
+				if(!keep_unmatched) al->filtered = gt_flt_not_correctly_aligned;
+			}
 		}
 	} else {
 		if(fg & (GT_SAM_FLAG_UNMAPPED | GT_SAM_FLAG_NOT_PASSING_QC |
