@@ -119,6 +119,7 @@ typedef struct {
   bool no_split;
   bool extra_stats;
   bool keep_duplicates;
+  bool ignore_duplicates;
   bool keep_unmatched;
   bool haploid;
   bool verbose;

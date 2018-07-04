@@ -123,6 +123,6 @@ typedef struct {
   UT_hash_handle hh;  
 } align_details;
 
-GT_INLINE gt_status gt_isp_quick_parse_bs_sam_alignment(const char** const text_line, align_details *al, const uint64_t thresh, const uint64_t max_template_len, bool keep_unmatched, bool* reverse);
+GT_INLINE gt_status gt_isp_quick_parse_bs_sam_alignment(const char** const text_line, align_details *al, const uint64_t thresh, const uint64_t max_template_len, bool keep_unmatched, bool ignore_dup, bool* reverse);
 
 #endif /* GT_INPUT_SAM_PARSER_H_ */

@@ -41,6 +41,7 @@ sr_param param = {
   .verbose = false,
   .haploid = false,
   .blank_trim = false,
+	.keep_unmatched = false,
   //	  .pileup = false,
   .caller = maximum_likelihood,
   .left_trim = 0,
@@ -60,6 +61,7 @@ sr_param param = {
   .no_split = false,
   .extra_stats = false,
   .keep_duplicates = false,
+	.ignore_duplicates = false,
   .all_positions = false,
   .num_threads = 1,
   .sequence_archive = NULL,
@@ -1669,7 +1671,7 @@ gt_status input_sam_parser_get_template_vector(
     al->trim_left[0] = al->trim_left[1] = al->trim_right[0] = al->trim_right[1] = 0;
     al->forward_position = al->reverse_position = 0;
     bool reverse;
-    error_code = gt_isp_quick_parse_bs_sam_alignment(text_line, al, param->mapq_thresh, param->max_template_len, param->keep_unmatched, &reverse);
+    error_code = gt_isp_quick_parse_bs_sam_alignment(text_line, al, param->mapq_thresh, param->max_template_len, param->keep_unmatched, param->ignore_duplicates, &reverse);
     gt_input_sam_parser_next_record(buffered_sam_input);
     if (error_code) {
       if (error_code == GT_ISP_SAM_FILTERED) {
@@ -2817,6 +2819,9 @@ gt_status parse_arguments(int argc, char **argv) {
       break;
     case 'd':
       param.keep_duplicates = true;
+      break;
+    case 101:
+      param.ignore_duplicates = true;
       break;
     case 'k':
       param.keep_unmatched = true;

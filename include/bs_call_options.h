@@ -8,6 +8,7 @@ gt_option bs_call_options[] = {
   { 'N', "no-split", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 1, true, "", "Do not split output on contig"},
   { '1', "haploid", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 1, true, "", "Assume genome is haploid"},
   { 'd', "keep-duplicates", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 1, true, "", "Don't merge duplicate reads"},
+  { 101, "ignore-duplicates", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 1, true, "", "Ignore duplicate flag from SAM/BAM files"},
   { 'k', "keep-unmatched", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 1, true, "", "Don't discard reads that don't form proper pairs"},
   { 's', "extra-stats", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 1, true, "", "Generate extra stats files"},
   { 'R', "right-trim", GT_OPT_REQUIRED, GT_OPT_INT, 1, true, "", "Bases to trim from right of read pair"},

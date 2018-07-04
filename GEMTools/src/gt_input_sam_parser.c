@@ -1392,7 +1392,7 @@ GT_INLINE gt_status
 gt_isp_quick_parse_bs_sam_alignment(const char **const text_line,
                                     align_details *al, const uint64_t thresh,
                                     const uint64_t max_template_len,
-                                    bool keep_unmatched, bool *reverse) {
+                                    bool keep_unmatched, bool ignore_dup, bool *reverse) {
   gt_status error_code;
 	al->filtered = gt_flt_none;
   /*
@@ -1418,8 +1418,9 @@ gt_isp_quick_parse_bs_sam_alignment(const char **const text_line,
 			else if(fg & GT_SAM_FLAG_UNMAPPED) al->filtered = gt_flt_unmapped;
 			else if(fg & GT_SAM_FLAG_NEXT_UNMAPPED) al->filtered = gt_flt_mate_unmapped;
 			else if(fg & GT_SAM_FLAG_NOT_PASSING_QC) al->filtered = gt_flt_qc;
-			else if(fg & GT_SAM_FLAG_PCR_OR_OPTICAL_DUPLICATE) al->filtered = gt_flt_duplicate;
-			else {
+			else if(fg & GT_SAM_FLAG_PCR_OR_OPTICAL_DUPLICATE) {
+				if(!ignore_dup) al->filtered = gt_flt_duplicate;
+			} else {
 				if(!keep_unmatched) al->filtered = gt_flt_not_correctly_aligned;
 			}
 		}
