@@ -212,6 +212,7 @@ static void process_contigs(void) {
   int idx[64];
   uint16_t start_ix[64];
   if(header != NULL) printf("%s\n", header);
+	else printf("track name = dbSNP_index description = \"dbSNP index produced by dbSNP_idx\"\n");
   prefix **pref_list = NULL;
   if(prefixes != NULL) {
     HASH_SORT(prefixes, cmp_prefix);
