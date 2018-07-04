@@ -2470,7 +2470,10 @@ static void *read_dbSNP_file(void *arg) {
       n_bins++;
       n_snps += n_entries;
     }
-  } else ok = false;
+  } else {
+    fprintf(stderr,"Error reading track line\n");
+    ok = false;
+  }
 	
   gt_string_delete(sbuf);
   gt_string_delete(ctg_name);
