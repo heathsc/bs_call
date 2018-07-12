@@ -37,7 +37,7 @@ gt_option bs_call_options[] = {
   { 'c', "conversion", GT_OPT_REQUIRED, GT_OPT_INT, 3, true, "<float>,<float>","Set under and over conversion rates (default "STRING(DEFAULT_UNDER_CONVERSION)","STRING(DEFAULT_OVER_CONVERSION)")"},	
 //  { 301, "graphical_model", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 3, true, "", "" },
 //  { 302, "maximum_likelihood", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 3, true, "", "" },
-	{ 303, "reference_bias", GT_OPT_REQUIRED, GT_OPT_STRING, 3, true, "<float>","Set bias to reference homozygote (default "STRING(DEFAULT_REF_BIAS)")"},
+  { 303, "reference-bias", GT_OPT_REQUIRED, GT_OPT_STRING, 3, true, "<float>","Set bias to reference homozygote (default "STRING(DEFAULT_REF_BIAS)")"},
 	/* Misc */
   { 'v', "verbose", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 4, true, "", ""},
   { 't', "threads", GT_OPT_REQUIRED, GT_OPT_INT, 4, false, "", ""},
