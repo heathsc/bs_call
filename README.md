@@ -8,30 +8,38 @@ Variant Caller for Bisulfite Sequencing Data.
 Installation
 ------------
 
-Before starting the installation of bscall, you should check if your system has the GSL library already installed.
+Before starting the installation of bscall, you should check if your
+system has the GSL library already installed.
 
-If your system does not have GSL library then you can download it from [GSL](https://www.gnu.org/software/gsl/) and follow the installation steps. 
+If your system does not have GSL library then you can download it from
+[GSL](https://www.gnu.org/software/gsl/) and follow the installation
+steps. Once GSL is available on your system then you can compile and
+install bscall.
 
-Once GSL is already available on your system then you can compile and install bscall.
+Configure:
 
-1) Change GSL library paths. In order to compile bscall you must specify the GSL headers and library directories. 
-   To do that, edit Gsl.mk file with the proper paths. Just modify two lines starting with GSL_LIB and GSL_INC.
+The compilation should be configured by typing:
 
-Gsl.mk:
+	./configure
+	
+If GSL is not in a standard location on your system then the location
+should be specified using the --with-gsl option to configure. For
+example, if the installation prefix for the gsl library is /opt/local
+(so the libraries can be found in /opt/local/lib and the include
+directory gsl in /opt/local/include) then the configuration command
+line should be:
 
-    #1. MODIFY HERE THE GSL LIBRARY LOCATION. FOR Example: GSL_LIB = -L/path/to/gsl/lib
-    GSL_LIB = -L/path/to/GSL/lib/
-    #2. MODIFY HERE THE GSL HEADERS LOCATION. FOR Example: GSL_LIB = -L/path/to/gsl/include
-    GSL_INC = -I/path/to/GSL/include/ 
-
-2) After editing Gsl.mk just type make all to get the code compiled.
+	./configure --with-gsl=/opt/local
 
 Compile:
 
     make all
 
-3) Installation. If the compilation process has been successfully completed then a binary file should be found at bin directory. Just copy it to a directory included in your
-$PATH.
+Install:
+
+If the compilation process has been successfully completed then a
+binary file should be found at bin directory. Just copy it to a
+directory included in your $PATH.
 
 Copy binary:
 
@@ -54,6 +62,7 @@ The parameters configured for this example are -p (Paired End Data) and -L5 (5 b
 Changelog
 ---------
 
+    2.0.2 Document configuration process.
     2.0.1 Fix argument -k about discarded reads that do not form proper pairs.
     2.0.1 Fix Single End Memory Leak.
     2.0.1 Use of dbSNP to evaluate SNP Calling.

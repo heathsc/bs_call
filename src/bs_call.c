@@ -6,7 +6,7 @@
  */
 
 #define BS_CALL "bs_call"
-#define BS_CALL_VERSION "2.01"
+#define BS_CALL_VERSION "2.0.2"
 
 #include <stdio.h>
 #include <sys/wait.h>
