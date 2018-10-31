@@ -1848,7 +1848,7 @@ gt_status input_sam_parser_get_template_vector(
 	      gt_vector_set_elm(align_list, al->idx, align_details *, al);
 	      al = 0;
 	    } else {
-	      fprintf(stdout, "Warning not found: " PRIgts " %" PRIu64 " %" PRIu64 " %c\n",
+	      fprintf(stderr, "Warning not found: " PRIgts " %" PRIu64 " %" PRIu64 " %c\n",
 		      PRIgts_content(tag), al->forward_position, al->reverse_position,
 		      al->orientation == FORWARD ? '+' : '-');
 	    }
