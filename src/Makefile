@@ -53,3 +53,6 @@ setup:
 clean: 
 	rm -f $(BS_CALL_OBJ) $(DBSNP_OBJ) $(BIN) a.out *~
 
+distclean:
+	$(MAKE) clean
+	rm -f Makefile.mk

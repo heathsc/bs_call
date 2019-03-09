@@ -25,3 +25,7 @@ clean:
 	$(MAKE) --directory=GEMTools clean
 	$(MAKE) --directory=src clean
 
+distclean:
+	$(MAKE) --directory=GEMTools distclean
+	$(MAKE) --directory=src distclean
+	rm -f config.status config.log

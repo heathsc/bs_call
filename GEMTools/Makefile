@@ -28,3 +28,6 @@ setup:
 clean:
 	@rm -rf $(FOLDER_BIN) $(FOLDER_BUILD) $(FOLDER_LIB)
 	
+distclean:
+	$(MAKE) clean
+	rm -f Makefile.mk

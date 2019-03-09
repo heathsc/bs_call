@@ -422,13 +422,14 @@ GT_INLINE gt_status gt_map_block_realign_levenshtein(
 }
 GT_INLINE gt_status gt_map_block_realign_levenshtein_sa(
     gt_map* const map,gt_string* const pattern,
-    gt_sequence_archive* const sequence_archive,const uint64_t extra_length,const bool ends_free) {
+    gt_sequence_archive* const sequence_archive,const double expansion_factor,const bool ends_free) {
   GT_MAP_CHECK(map);
   GT_STRING_CHECK(pattern);
   GT_SEQUENCE_ARCHIVE_CHECK(sequence_archive);
   gt_status error_code;
   // Retrieve the sequence
   const uint64_t decode_length = (ends_free) ? gt_string_get_length(pattern) : gt_map_get_length(map);
+  const uint64_t extra_length = (uint64_t)((double)decode_length * expansion_factor);
   const uint64_t extra_decode_length = (ends_free) ? extra_length : 0;
   gt_string* const sequence = gt_string_new(decode_length+extra_decode_length+1);
   if ((error_code=gt_sequence_archive_retrieve_sequence_chunk(sequence_archive,
@@ -476,7 +477,7 @@ GT_INLINE gt_status gt_map_block_realign_weighted(
 }
 GT_INLINE gt_status gt_map_block_realign_weighted_sa(
     gt_map* const map,gt_string* const pattern,
-    gt_sequence_archive* const sequence_archive,const uint64_t extra_length,
+    gt_sequence_archive* const sequence_archive,const double expansion_factor,
     int32_t (*gt_weigh_fx)(char*,char*)) {
   GT_MAP_CHECK(map);
   GT_STRING_CHECK(pattern);
@@ -484,6 +485,7 @@ GT_INLINE gt_status gt_map_block_realign_weighted_sa(
   gt_status error_code;
   // Retrieve the sequence
   const uint64_t pattern_length = gt_string_get_length(pattern);
+  const uint64_t extra_length = (uint64_t)((double)pattern_length * expansion_factor);
   gt_string* const sequence = gt_string_new(pattern_length+1);
   if ((error_code=gt_sequence_archive_retrieve_sequence_chunk(sequence_archive,
       gt_map_get_seq_name(map),gt_map_get_strand(map),gt_map_get_position(map),

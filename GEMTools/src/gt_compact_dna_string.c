@@ -26,11 +26,17 @@ const char gt_cdna_decode[8] = {
   GT_DNA_CHAR_A, GT_DNA_CHAR_C, GT_DNA_CHAR_G, GT_DNA_CHAR_T,
   GT_DNA_CHAR_N, GT_DNA_CHAR_N, GT_DNA_CHAR_N, GT_DNA_CHAR_N
 };
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winitializer-overrides"
+
 const uint8_t gt_cdna_encode[256] = {
     [0 ... 255] = GT_CDNA_ENC_CHAR_N,
     ['A'] = GT_CDNA_ENC_CHAR_A,['C'] = GT_CDNA_ENC_CHAR_C,['G'] = GT_CDNA_ENC_CHAR_G,['T'] = GT_CDNA_ENC_CHAR_T,
     ['a'] = GT_CDNA_ENC_CHAR_A,['c'] = GT_CDNA_ENC_CHAR_C,['g'] = GT_CDNA_ENC_CHAR_G,['t'] = GT_CDNA_ENC_CHAR_T,
 };
+
+#pragma clang diagnostic pop
 
 #define gt_cdna_decode(enc_char)  gt_cdna_decode[enc_char]
 #define gt_cdna_encode(character) gt_cdna_encode[(uint8_t)character]

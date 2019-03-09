@@ -8,6 +8,9 @@
 
 #include "gt_dna_string.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winitializer-overrides"
+
 const bool gt_dna[256] =
 {
     [0 ... 255] = false,
@@ -50,6 +53,7 @@ const bool gt_iupac_code[256] =
   ['b'] = true, ['z'] = true, ['x'] = true, ['u'] = true, ['r'] = true
 };
 
+#pragma clang diagnostic pop
 
 /*
  * DNA String handler

@@ -61,7 +61,9 @@ The parameters configured for this example are -p (Paired End Data) and -L5 (5 b
 ---------
 Changelog
 ---------
-
+    2.0.3 Add distclean target to makefile
+    2.0.3 Remove compile warnings from GEMTools
+    2.0.3 Fix bug with handling duplicate reads  
     2.0.2 Document configuration process.
     2.0.1 Fix argument -k about discarded reads that do not form proper pairs.
     2.0.1 Fix Single End Memory Leak.
