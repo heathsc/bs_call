@@ -10,22 +10,22 @@
 all: release
 
 release: 	
-	$(MAKE) --directory=GEMTools
+	$(MAKE) --directory=gt
 	$(MAKE) --directory=src
 
 debug:
-	$(MAKE) --directory=GEMTools debug
+	$(MAKE) --directory=gt debug
 	$(MAKE) --directory=src debug
 
 static:
-	$(MAKE) --directory=GEMTools static
+	$(MAKE) --directory=gt static
 	$(MAKE) --directory=src static
 
 clean:
-	$(MAKE) --directory=GEMTools clean
+	$(MAKE) --directory=gt clean
 	$(MAKE) --directory=src clean
 
 distclean:
-	$(MAKE) --directory=GEMTools distclean
+	$(MAKE) --directory=gt distclean
 	$(MAKE) --directory=src distclean
 	rm -f config.status config.log

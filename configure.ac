@@ -5,20 +5,6 @@ AC_SUBST([HAVE_ZLIB])
 AC_CHECK_LIB([bz2], [BZ2_bzReadOpen], [HAVE_BZLIB=1])
 AC_SUBST([HAVE_BZLIB])
 
-AC_CHECK_HEADERS([omp.h],[HAVE_OPENMP=1])
-AC_SUBST([HAVE_OPENMP])
-
-AC_ARG_WITH(gemtools,
-[AS_HELP_STRING([--with-gemtools=PATH],
-		[specify prefix directory for installed gemtool package.])])
-if test "x$with_gemtools" != "x"; then
-      gemtoolslibs="-L$with_gemtools/lib -lgemtools"
-		gemtoolsinc="-I$with_gemtools/include -I$with_gemtools/resources/include"
-fi
-
-AC_SUBST([gemtoolsinc])
-AC_SUBST([gemtoolslibs])
-
 AC_ARG_WITH(gsl,
 [AS_HELP_STRING([--with-gsl=PATH],
 		[specify prefix directory for installed gsl library.])])
@@ -33,6 +19,20 @@ fi
 AC_SUBST([GSLLIBS])
 AC_SUBST([GSLINC])
 
-AC_CONFIG_FILES([GEMTools/Makefile.mk])
+AC_ARG_WITH(htslib,
+[AS_HELP_STRING([--with-htslib=PATH],
+		[specify prefix directory for installed htslib library.])])
+if test "x$with_htslib" != "x"; then
+      HTSLIBS="-L$with_htslib/lib -lhts"
+		HTSINC="-I$with_htslib/include"
+else
+      HTSLIBS="-lhts"
+		HTSINC=""
+fi
+
+AC_SUBST([HTSLIBS])
+AC_SUBST([HTSINC])
+
+AC_CONFIG_FILES([gt/Makefile.mk])
 AC_CONFIG_FILES([src/Makefile.mk])
 AC_OUTPUT

@@ -61,6 +61,19 @@ The parameters configured for this example are -p (Paired End Data) and -L5 (5 b
 ---------
 Changelog
 ---------
+    2.1.0 Reorganized and cleaned up distribution.  
+          Switched to using htslib for input and output, so can now read from SAM or BAM and
+          write to VCF or BCF natively.
+          Reduced *a lot* the memory usage by (a) only reading the reference for the contig 
+          currently being processed and (b) reducing the amount of time most alignment
+          information is kept.  A typical human WGBS sample can no be processed calling
+          all chromosomes in parallel on a single computer using < 10GB RAM (this will
+          depend on the coverage).
+          Changed the threading model.  Additional threads are split between calculation,
+          input and ouput.
+          Removed most of the unused GEMTools library (as we no longer use it for parsing the 
+          SAM input, keeping just the core library which can now be found in gt/
+          Removed legacy and unused options.
     2.0.3 Add distclean target to makefile
     2.0.3 Remove compile warnings from GEMTools
     2.0.3 Fix bug with handling duplicate reads  

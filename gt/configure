@@ -583,10 +583,6 @@ PACKAGE_URL=''
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-HTSINC
-HTSLIBS
-GSLINC
-GSLLIBS
 HAVE_BZLIB
 HAVE_ZLIB
 OBJEXT
@@ -637,8 +633,6 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
-with_gsl
-with_htslib
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1252,13 +1246,6 @@ if test -n "$ac_init_help"; then
      short | recursive ) echo "Configuration of GEMTools 1.0:";;
    esac
   cat <<\_ACEOF
-
-Optional Packages:
-  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
-  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-gsl=PATH         specify prefix directory for installed gsl library.
-  --with-htslib=PATH      specify prefix directory for installed htslib
-                          library.
 
 Some influential environment variables:
   CC          C compiler command
@@ -2658,43 +2645,7 @@ fi
 
 
 
-
-# Check whether --with-gsl was given.
-if test "${with_gsl+set}" = set; then :
-  withval=$with_gsl;
-fi
-
-if test "x$with_gsl" != "x"; then
-      GSLLIBS="-L$with_gsl/lib -lgsl -lgslcblas"
-		GSLINC="-I$with_gsl/include"
-else
-      GSLLIBS="-lgsl -lgslcblas"
-		GSLINC=""
-fi
-
-
-
-
-
-# Check whether --with-htslib was given.
-if test "${with_htslib+set}" = set; then :
-  withval=$with_htslib;
-fi
-
-if test "x$with_htslib" != "x"; then
-      HTSLIBS="-L$with_htslib/lib -lhts"
-		HTSINC="-I$with_htslib/include"
-else
-      HTSLIBS="-lhts"
-		HTSINC=""
-fi
-
-
-
-
-ac_config_files="$ac_config_files gt/Makefile.mk"
-
-ac_config_files="$ac_config_files src/Makefile.mk"
+ac_config_files="$ac_config_files Makefile.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -3401,8 +3352,7 @@ cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
 for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
-    "gt/Makefile.mk") CONFIG_FILES="$CONFIG_FILES gt/Makefile.mk" ;;
-    "src/Makefile.mk") CONFIG_FILES="$CONFIG_FILES src/Makefile.mk" ;;
+    "Makefile.mk") CONFIG_FILES="$CONFIG_FILES Makefile.mk" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

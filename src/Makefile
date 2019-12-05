@@ -12,7 +12,10 @@ include Makefile.mk
 
 PROG=bs_call dbSNP_idx
 
-BS_CALL_SRC=bs_call.c genotype_model.c
+BS_CALL_SRC=bs_call.c genotype_model.c stats.c stats_utils.c print_vcf.c init_param.c load_dbSNP.c \
+parse_args.c read_reference.c process.c get_template_vector.c al_utils.c read_utils.c meth_profile.c \
+process_template.c call_genotypes.c input_sam.c process_sam_header.c get_sequence.c
+
 DBSNP_SRC=dbSNP_idx.c dbSNP_compress.c dbSNP_utils.c
 
 BS_CALL_INC=bs_call.h bs_call_options.h uthash.h
@@ -22,7 +25,7 @@ BIN=$(addprefix $(FOLDER_BIN)/, $(PROG))
 INC=
 
 
-BS_CALL_LIBS:= $(LIBS) -lpthread
+BS_CALL_LIBS:= $(LIBS) -lhts -lpthread
 
 DBSNP_LIBS:=-lm
 ifeq ($(HAVE_OPENMP),1)
