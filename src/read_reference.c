@@ -94,7 +94,6 @@ bool load_sequence(ctg_t * const contig, faidx_t *idx, const bool calc_gc) {
 			if(calc_gc) {
 				if(b) ct[gc_tab[b - 1]]++;
 				ix++;
-				ix++;
 				if(ix == 100) {
 					gt_vector_insert(gc_bins, (ct[0] + ct[1] == 100 ? ct[1] : 255), uint8_t);
 					ix = ct[0] = ct[1] = 0;

@@ -15,7 +15,7 @@
 #include "bs_call.h"
 
 gt_status process_template_vector(gt_vector *align_list, ctg_t * const ctg, uint32_t y, sr_param *param) {
-	const work_t * work = &param->work;
+	work_t * const work = &param->work;
 	bs_stats * const stats = work->stats;
 	int ix = gt_vector_get_used(align_list);
 	assert(ix);
@@ -42,6 +42,8 @@ gt_status process_template_vector(gt_vector *align_list, ctg_t * const ctg, uint
 		trim_soft_clips(*al_p, stats, trim_left, trim_right);
 		handle_overlap(*al_p, stats, trim_left, trim_right);
 		uint32_t rdl[2]={0,0};
+		int max_pos = 0;
+		mprof_thread_t *mp = &work->mprof_thread[work->mprof_write_idx];
 		for(int k = 0; k < 2; k++) {
 			if((*al_p)->read[k] == NULL) continue;
 			rdl[k]=gt_vector_get_used((*al_p)->read[k]);
@@ -60,7 +62,7 @@ gt_status process_template_vector(gt_vector *align_list, ctg_t * const ctg, uint
 			// Here we simply normalize the reads w.r.t. indels by
 			// adding N's in the place of deletions and removing insertions
 			uint32_t num_misms = gt_vector_get_used((*al_p)->mismatches[k]);
-			gt_vector_clear(work->orig_pos);
+			gt_vector_clear(mp->orig_pos[k]);
 			uint32_t del_size = 0;
 			for (int z = 0; z < num_misms; z++) {
 				gt_misms *misms = gt_vector_get_elm((*al_p)->mismatches[k], z, gt_misms);
@@ -68,17 +70,21 @@ gt_status process_template_vector(gt_vector *align_list, ctg_t * const ctg, uint
 			}
 			if (del_size > 0) gt_vector_reserve_additional((*al_p)->read[k], del_size);
 			uint8_t * const sp = gt_vector_get_mem((*al_p)->read[k], uint8_t);
-			gt_vector_reserve(work->orig_pos, rdl[k] + del_size, true);
+			gt_vector_reserve(mp->orig_pos[k], rdl[k] + del_size, true);
 			// *Orig tracks position in original read (taking into account the original strand)
-			int * const orig = gt_vector_get_mem(work->orig_pos, int);
+			int * const orig = gt_vector_get_mem(mp->orig_pos[k], int);
 			int posx;
+			int mpos = 0;
 			if(k) {
 				posx = rdl[k] + trim_right[k] - 1;
 				for(int k1 = 0; k1 < rdl[k]; k1++) orig[k1] = posx - k1;
+				mpos = posx;
 			} else {
 				posx = trim_left[k];
 				for(int k1 = 0; k1 < rdl[k]; k1++) orig[k1] = posx + k1;
+				mpos = posx + rdl[k];
 			}
+			if(mpos > max_pos) max_pos = mpos;
 			uint32_t adj=0, ix1;
 			for (int z = 0; z < num_misms; z++) {
 				gt_misms *misms =  gt_vector_get_elm((*al_p)->mismatches[k], z, gt_misms);
@@ -99,9 +105,23 @@ gt_status process_template_vector(gt_vector *align_list, ctg_t * const ctg, uint
 			}
 			ix1 = rdl[k] + adj;
 			gt_vector_set_used((*al_p)->read[k], ix1);
-			gt_vector_set_used(work->orig_pos, ix1);
-			meth_profile(*al_p, k, x, work->orig_pos, param);
+			gt_vector_set_used(mp->orig_pos[k], ix1);
 		}
+		mp->al = *al_p;
+		mp->x = x;
+		mp->max_pos = max_pos;
+		int ix = (work->mprof_write_idx + 1) % N_MPROF_BUFFERS;
+//		fprintf(stderr,"Sending work (write_ix from %d to %d)\n", work->mprof_write_idx, ix);
+		pthread_mutex_lock(&work->mprof_mutex);
+		while(ix == work->mprof_read_idx) {
+//			fprintf(stderr, "proc_template() waiting for free space\n");
+			pthread_cond_wait(&work->mprof_cond, &work->mprof_mutex);
+		}
+		work->mprof_write_idx = ix;
+		pthread_cond_signal(&work->mprof_cond);
+		pthread_mutex_unlock(&work->mprof_mutex);
+
+//		meth_profile(*al_p, k, x, y, work->orig_pos, max_pos, param);
 
 	}
 	if (ix) call_genotypes_ML(ctg, align_list, x, y, param);

@@ -39,13 +39,25 @@ void init_param(sr_param * const par) {
 	pthread_cond_init(&par->work.print_cond, NULL);
 	pthread_mutex_init(&par->work.vcf_mutex, NULL);
 	pthread_cond_init(&par->work.vcf_cond, NULL);
+	pthread_mutex_init(&par->work.process_mutex, NULL);
+	pthread_cond_init(&par->work.process_cond, NULL);
+	pthread_mutex_init(&par->work.mprof_mutex, NULL);
+	pthread_cond_init(&par->work.mprof_cond, NULL);
 	defs_t * const defs = &par->defs;
 	for(int i = 0; i < 5 ;i++) defs->flt_name[i] = strdup(flts[i]);
 	for(int i = 0; i < 10; i++) defs->gt_het[i] = het[i];
 	lfact_store_init(defs->lfact_store);
 	for(int i = 0; i < 100; i++) defs->logp[i] = log(0.01 * (double)(i + 1));
-	defs->base_tab['A'] = 1;
-	defs->base_tab['C'] = 2;
-	defs->base_tab['G'] = 3;
-	defs->base_tab['T'] = 4;
+	uint8_t *tab = par->work.flt_tab;
+	for(int q = MIN_QUAL; q < FLT_QUAL; q++) {
+		int x = q << 2;
+		// Strand 0 (non converted)
+		tab[x] = 9; tab[x + 1] = 4; tab[x + 2] = 8; tab[x + 3] = 5;
+		// Strand 1 (C2T)
+		x += 256;
+		tab[x] = 9; tab[x + 1] = 6; tab[x + 2] = 8; tab[x + 3] = 7;
+		// Strand 2 (G2A)
+		x += 256;
+		tab[x] = 11; tab[x + 1] = 4; tab[x + 2] = 10; tab[x + 3] = 5;
+	}
 };

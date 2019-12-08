@@ -66,16 +66,16 @@ double calc_full_model_like(const gsl_vector *v, void *par_p) {
   double q = 0.5 * (1.0 + sin(q1));
   double bias = par->bias;
   switch(par->ref) {
-  case 'A' :
+  case 1: // A
     lk += log(1.0 + (1.0 - w) * (1.0 - q) * (bias - 1));
     break;
-  case 'C':
+  case 2: // C
     lk += log(1.0 + w * p * (bias - 1));
     break;
-  case 'G':
+  case 3: // G
     lk += log(1.0 + (1.0 - w) * q * (bias - 1));
     break;
-  case 'T':
+  case 4: // T
     lk += log(1.0 + w * (1.0 - p) * (bias - 1));
     break;
   }
@@ -129,22 +129,22 @@ void calc_full_model_like_gradient(const gsl_vector *v, void *par_p, double *lik
   double bias = par->bias;
   double z;
   switch(par->ref) {
-  case 'A' :
+  case 1: // A
     z = 1.0 + (1.0 - w) * (1.0 - q) * (bias - 1);
     g[0] += -(cos_v[0] * (1.0 - q) * (bias - 1.0)) / (2.0 * z);
     g[2] += -(cos_v[2] * (1.0 - w) * (bias - 1.0)) / (2.0 * z);
     break;
-  case 'C':
+  case 2: // C
     z = 1.0 + w * p * (bias - 1);
     g[0] += (cos_v[0] * p * (bias - 1.0)) / (2.0 * z);
     g[1] += (cos_v[1] * w * (bias - 1.0)) / (2.0 * z);
     break;
-  case 'G':
+  case 3: // G
     z = 1.0 + (1.0 - w) * q * (bias - 1);
     g[0] += -(cos_v[0] * q * (bias - 1.0)) / (2.0 * z);
     g[2] += (cos_v[2] * (1.0 - w) * (bias - 1.0)) / (2.0 * z);
     break;
-  case 'T':
+  case 4: // T
     z = 1.0 + w * (1.0 - p) * (bias - 1);
     g[0] += (cos_v[0] * (1.0 - p) * (bias - 1.0)) / (2.0 * z);
     g[1] += -(cos_v[1] * w * (bias - 1.0)) / (2.0 * z);
@@ -251,22 +251,22 @@ void calc_full_model_gradient(const gsl_vector *v, void *par_p, gsl_vector *df) 
   double bias = par->bias;
   double z;
   switch(par->ref) {
-  case 'A' :
+  case 1: // A
     z = 1.0 + (1.0 - w) * (1.0 - q) * (bias - 1);
     g[0] += -(cos_v[0] * (1.0 - q) * (bias - 1.0)) / (2.0 * z);
     g[2] += -(cos_v[2] * (1.0 - w) * (bias - 1.0)) / (2.0 * z);
     break;
-  case 'C':
+  case 2: // C
     z = 1.0 + w * p * (bias - 1);
     g[0] += (cos_v[0] * p * (bias - 1.0)) / (2.0 * z);
     g[1] += (cos_v[1] * w * (bias - 1.0)) / (2.0 * z);
     break;
-  case 'G':
+  case 3: // G
     z = 1.0 + (1.0 - w) * q * (bias - 1);
     g[0] += -(cos_v[0] * q * (bias - 1.0)) / (2.0 * z);
     g[2] += (cos_v[2] * (1.0 - w) * (bias - 1.0)) / (2.0 * z);
     break;
-  case 'T':
+  case 4: // T
     z = 1.0 + w * (1.0 - p) * (bias - 1);
     g[0] += (cos_v[0] * (1.0 - p) * (bias - 1.0)) / (2.0 * z);
     g[1] += -(cos_v[1] * w * (bias - 1.0)) / (2.0 * z);
@@ -466,19 +466,19 @@ void calc_gt_prob(gt_meth *gt, const sr_param * const param, char rf) {
     double lrb = log(ref_bias);
     double lrb1 = log(0.5 * (1.0 + ref_bias));
     switch (rf) {
-    case 'A':
+    case 1: // A
       ll[0] = lrb;
       ll[1] = ll[2] = ll[3] = lrb1;
       break;
-    case 'C':
+    case 2: // C
       ll[4] = lrb;
       ll[1] = ll[5] = ll[6] = lrb1;
       break;
-    case 'G':
+    case 3: // G
       ll[7] = lrb;
       ll[2] = ll[5] = ll[8] = lrb1;
       break;
-    case 'T':
+    case 4: // T
       ll[9] = lrb;
       ll[3] = ll[6] = ll[8] = lrb1;
       break;

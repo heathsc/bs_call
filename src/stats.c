@@ -274,9 +274,13 @@ void output_stats(sr_param *par) {
 	fprintf(fp, "%.8g\n\t\t\t]", stats->CpG_nonref_meth[stats_passed][100]);
 	int nr = gt_vector_get_used(stats->meth_profile);
 	if(nr) {
+//		for(uint32_t k = 0; k < nr; k++) {
+//			meth_cts *mc = gt_vector_get_mem(stats->meth_profile, meth_cts);
+//			fprintf(stderr,"%u: %lu %lu %lu %lu\n", k, mc[k].conv_cts[0], mc[k].conv_cts[1], mc[k].conv_cts[2], mc[k].conv_cts[3]);
+//		}
 		fputs(",\n\t\t\t\"NonCpGreadProfile\": ", fp);
 		term ='[';
-		for(int i = 0; i < nr; i++) {
+		for(int i = 1; i < nr; i++) {
 			meth_cts *mc = gt_vector_get_elm(stats->meth_profile, i, meth_cts);
 			fprintf(fp, "%c\n\t\t\t\t[ %" PRIu64 ", %" PRIu64 ", %" PRIu64 ", %" PRIu64 " ]", term, mc->conv_cts[0], mc->conv_cts[1], mc->conv_cts[2], mc->conv_cts[3]);
 			term = ',';
@@ -290,6 +294,7 @@ void output_stats(sr_param *par) {
 		gt_ctg_stats * const gs = ctg->ctg_stats;
 		if(gs == NULL || gs->snps[stats_all] == 0) continue;
 		fprintf(fp, "%c\n\t\t\"%s\": {\n", term, ctg->name);
+		term = ',';
 		fprintf(fp, "\t\t\t\"SNPS\": {\n\t\t\t\t\"All\": %" PRIu64 ",\n\t\t\t\t\"Passed\": %" PRIu64 "\n\t\t\t},\n", gs->snps[stats_all], gs->snps[stats_passed]);
 		fprintf(fp, "\t\t\t\"Indels\": {\n\t\t\t\t\"All\": %" PRIu64 ",\n\t\t\t\t\"Passed\": %" PRIu64 "\n\t\t\t},\n", gs->indels[stats_all], gs->indels[stats_passed]);
 		fprintf(fp, "\t\t\t\"Multiallelic\": {\n\t\t\t\t\"All\": %" PRIu64 ",\n\t\t\t\t\"Passed\": %" PRIu64 "\n\t\t\t},\n", gs->multi[stats_all], gs->multi[stats_passed]);

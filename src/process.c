@@ -17,6 +17,26 @@
 #include "gem_tools.h"
 #include "bs_call.h"
 
+void *mprof_thread(void *arg) {
+	sr_param * const par = arg;
+	pthread_mutex_lock(&par->work.mprof_mutex);
+	while(1) {
+		while(par->work.mprof_read_idx == par->work.mprof_write_idx && !par->work.mprof_end) {
+//			fprintf(stderr,"mprof_thread() waiting for work\n");
+			pthread_cond_wait(&par->work.mprof_cond, &par->work.mprof_mutex);
+		}
+		bool end = (par->work.mprof_read_idx == par->work.mprof_write_idx);
+		int ix = par->work.mprof_read_idx;
+		pthread_mutex_unlock(&par->work.mprof_mutex);
+		if(end) break;
+		mprof_thread_t * mp = &par->work.mprof_thread[ix];
+		meth_profile(mp->al, mp->x, mp->orig_pos, mp->max_pos, par);
+		pthread_mutex_lock(&par->work.mprof_mutex);
+		par->work.mprof_read_idx = (ix + 1) % N_MPROF_BUFFERS;
+		pthread_cond_signal(&par->work.mprof_cond);
+	}
+	return NULL;
+}
 
 void *process_thread(void *arg) {
 	sr_param *par = arg;
@@ -25,7 +45,6 @@ void *process_thread(void *arg) {
 	while(true) {
 		pthread_mutex_lock(&par->work.process_mutex);
 		while(!par->work.align_list_waiting && !par->work.process_end) {
-//			fprintf(stderr,"process_thread(), waiting for work\n");
 			pthread_cond_wait(&par->work.process_cond, &par->work.process_mutex);
 		}
 		pthread_mutex_unlock(&par->work.process_mutex);
@@ -37,14 +56,12 @@ void *process_thread(void *arg) {
 			work->free_list_waiting = prev_align;
 			work->align_list_waiting = NULL;
 			pthread_mutex_lock(&par->work.process_mutex);
-			//fprintf(stderr,"process_thread(), deblocking process_cond\n");
 			pthread_cond_signal(&work->process_cond);
 			pthread_mutex_unlock(&par->work.process_mutex);
 			process_template_vector(alist, ctg, pos, par);
 			prev_align = alist;
 		} else break;
 	}
-//	fprintf(stderr, "process_thread() exiting\n");
 	return NULL;
 }
 
@@ -55,7 +72,6 @@ void *print_thread(void *arg) {
 	while(1) {
 		pthread_mutex_lock(&par->work.print_mutex);
 		while(!par->work.vcf_n && !par->work.print_end) {
-//			fprintf(stderr,"print_thread(), waiting for work\n");
 			pthread_cond_wait(&par->work.print_cond, &par->work.print_mutex);
 		}
 		pthread_mutex_unlock(&par->work.print_mutex);
@@ -65,7 +81,6 @@ void *print_thread(void *arg) {
 				while(!par->work.vcf[i].ready) {
 					pthread_mutex_lock(&par->work.vcf_mutex);
 					while(!par->work.vcf[i].ready) {
-//						fprintf(stderr,"print_thread(), waiting for vcf[%d]\n", i);
 						pthread_cond_wait(&par->work.vcf_cond, &par->work.vcf_mutex);
 					}
 					pthread_mutex_unlock(&par->work.vcf_mutex);
@@ -76,13 +91,10 @@ void *print_thread(void *arg) {
 			flush_vcf_entries(bcf, par);
 			par->work.vcf_n = 0;
 			pthread_mutex_lock(&par->work.print_mutex);
-//			fprintf(stderr,"print_thread(), deblocking print_cond\n");
 			pthread_cond_signal(&par->work.print_cond);
 			pthread_mutex_unlock(&par->work.print_mutex);
-//			fprintf(stderr,"print_thread(), finished batch\n");
 		} else break;
 	}
-//	fprintf(stderr,"print_thread(), leaving\n");
 	return NULL;
 }
 
@@ -126,20 +138,29 @@ gt_status bs_call_process(sr_param * const param) {
 			print_vcf_header(param, header);
 			param->work.ref = gt_string_new(16384);
 			param->work.ref1 = gt_string_new(16384);
-			param->work.orig_pos = gt_vector_new(256, sizeof(int));
+			for(int i = 0; i < N_MPROF_BUFFERS; i++) {
+				param->work.mprof_thread[i].orig_pos[0] = gt_vector_new(256, sizeof(int));
+				param->work.mprof_thread[i].orig_pos[1] = gt_vector_new(256, sizeof(int));
+			}
 			param->work.sam_header = header;
 			fill_base_prob_table();
-			pthread_t process_thr, print_thr;
+			pthread_t process_thr, print_thr, mprof_thr;
 			pthread_create(&print_thr, NULL, print_thread, param);
 			pthread_create(&process_thr, NULL, process_thread, param);
+			pthread_create(&mprof_thr, NULL, mprof_thread, param);
 			gt_vector *align_list = gt_vector_new(32, sizeof(align_details *));
 			err = read_input(in_file, align_list, param);
 			param->work.process_end = true;
 			pthread_join(process_thr, 0);
 			param->work.print_end = true;
+			param->work.mprof_end = true;
+			pthread_mutex_lock(&param->work.mprof_mutex);
+			pthread_cond_signal(&param->work.mprof_cond);
+			pthread_mutex_unlock(&param->work.mprof_mutex);
 			pthread_mutex_lock(&param->work.print_mutex);
 			pthread_cond_signal(&param->work.print_cond);
 			pthread_mutex_unlock(&param->work.print_mutex);
+			pthread_join(mprof_thr, 0);
 			pthread_join(print_thr, 0);
 			hts_close(param->work.vcf_file);
 		}

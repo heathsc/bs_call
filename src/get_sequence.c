@@ -12,7 +12,8 @@
 #include "gem_tools.h"
 #include "bs_call.h"
 
-static const char dectab[8] = {'N', 'A', 'C', 'G', 'T', 'N', 'N', 'N'};
+//static const char dectab[8] = {'N', 'A', 'C', 'G', 'T', 'N', 'N', 'N'};
+static const char dectab[8] = {0, 1, 2, 3, 4, 0, 0, 0};
 
 #define FILL_DECODE_BUF(buf, x) {uint16_t c = (x); for(int k = 4; k >= 0; k--) { buf[k] = dectab[(int)(c & 7)]; c >>= 3; }}
 
@@ -29,7 +30,7 @@ bool get_sequence_string(ctg_t * contig, const uint32_t x, const uint32_t sz, ct
 	gt_string_resize(ref, sz + 1);
 	uint32_t len = sz;
 	uint32_t x1;
-	for(x1 = x; x1 < contig->start_pos && len > 0; x1++, len--) *rp++ = 'N';
+	for(x1 = x; x1 < contig->start_pos && len > 0; x1++, len--) *rp++ = 0;
 	if(len > 0) {
 		char decode[5];
 		uint32_t off = x1 - contig->start_pos;
@@ -45,7 +46,7 @@ bool get_sequence_string(ctg_t * contig, const uint32_t x, const uint32_t sz, ct
 			x1++;
 			len--;
 		}
-		while(len--) *rp++ = 'N';
+		while(len--) *rp++ = 0;
 	}
 	*rp++ = 0;
 	ref->length = rp - ref->buffer;

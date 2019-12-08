@@ -31,8 +31,7 @@ double fisher(int *const c, const double * const lfact_store) {
 	int n = row[0] + row[1];
 	if(n == 0) return 1.0;
 	double delta = (double)c[0] - (double)(row[0] * col[0]) / (double)n;
-	double knst =
-			lfact(col[0]) + lfact(col[1]) + lfact(row[0]) + lfact(row[1]) - lfact(n);
+	double knst = lfact(col[0]) + lfact(col[1]) + lfact(row[0]) + lfact(row[1]) - lfact(n);
 	double l = exp(knst - lfact(c[0]) - lfact(c[1]) - lfact(c[2]) - lfact(c[3]));
 	double p = l;
 	if (delta > 0.0) {

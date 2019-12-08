@@ -69,18 +69,7 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 			{{3, 4}, {3, 4}, {3, 4}, {4, 0}, {3, 0}}, // GT
 			{{4, 0}, {4, 0}, {4, 0}, {4, 0}, {0, 0}}  // TT
 	};
-//	static const char *gt_str[10][5] = {
-//			{"1/1", "0/0", "1/1", "1/1", "1/1"}, // AA
-//			{"1/2", "0/1", "0/1", "1/2", "1/2"}, // AC
-//			{"1/2", "0/1", "1/2", "0/1", "1/2"}, // AG
-//			{"1/2", "0/1", "1/2", "1/2", "0/1"}, // AT
-//			{"1/1", "1/1", "0/0", "1/1", "1/1"}, // CC
-//			{"1/2", "1/2", "0/1", "0/1", "1/2"}, // CG
-//			{"1/2", "1/2", "0/1", "1/2", "0/1"}, // CT
-//			{"1/1", "1/1", "1/1", "0/0", "1/1"}, // GG
-//			{"1/2", "1/2", "1/2", "0/1", "0/1"}, // GT
-//			{"1/1", "1/1", "1/1", "1/1", "0/0"}  // TT
-//	};
+
 	static const uint8_t gt_int[10][5] = {
 			{0x44, 0x22, 0x44, 0x44, 0x44}, // AA
 			{0x48, 0x24, 0x24, 0x48, 0x48}, // AC
@@ -105,15 +94,15 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 			{0, 0, 0, 0, 0}, // GT
 			{0, 0, 0, 0, 1}, // TT
 	};
-
+	static char *pbase = "NACGT";
 	static char *iupac = "NAMRWCSYGKT";
 	static int cflag[] = {0, 1, 0, 0, 1, 1, 1, 0, 0, 0};
 	static int gflag[] = {0, 0, 1, 0, 0, 1, 0, 1, 1, 0};
 	static char dtab[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 0, 0, 0, 0, 0, 0 };
 	static ctg_t *old_ctg = NULL;
 	static uint32_t old_x;
-	const char * const base_tab = par->defs.base_tab;
 	char rs[512];
+	char prf_ctxt[5];
 	char *db_prefix;
 	static uint32_t prev_cpg_x;
 	static bool prev_cpg_flt;
@@ -123,6 +112,12 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 
 	if(x == 0) return;
 	if(old_ctg != ctg) {
+		// Free GC bin list for old contig
+		if(old_ctg && old_ctg->ctg_stats && old_ctg->ctg_stats->gc) {
+			free(old_ctg->ctg_stats->gc);
+			old_ctg->ctg_stats->gc = NULL;
+			old_ctg->ctg_stats->nbins = 0;
+		}
 		old_ctg = ctg;
 	} else if(x <= old_x) return;
 	old_x = x;
@@ -175,12 +170,9 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 			}
 		}
 	}
-	char rfc = toupper((int)rf_ctxt[2]);
-	int rfix = base_tab[(int)rfc];
-	if(rfix < 1 || rfix > 4) {
-		rfc = 'N';
-		rfix = 0;
-	}
+	for(int i = 0; i < 5; i++) prf_ctxt[i] = pbase[(int)rf_ctxt[i]];
+	char rfc = prf_ctxt[2];
+	int rfix = (int)rf_ctxt[2];
 	int gt = gt_store[2] - 1;
 	// Skip homozygous reference if AA or TT
 	bool skip = (!par->all_positions && db_prefix == NULL && gt_flag[gt][rfix]);
@@ -268,7 +260,7 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 		// INFO field
 		bcf->n_info = 1;
 		bcf_enc_int1(str, par->work.vcf_ids[VCF_INFO_CX]);
-		bcf_enc_vchar(str, 5, rf_ctxt);
+		bcf_enc_vchar(str, 5, prf_ctxt);
 		bcf->n_sample = 1;
 	}
 
@@ -499,12 +491,12 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 				if(!strcmp(cs_str[gt], "+")) {
 					prev_cpg_x = x;
 					prev_cpg_flt = (flt != 0);
-					if(!strncmp(rf_ctxt+2, "CG", 2)) ref_cpg = true;
+					if(!strncmp(prf_ctxt+2, "CG", 2)) ref_cpg = true;
 					a = counts[5];
 					b = counts[7];
 					cpg_ok = true;
 				} else if(!strcmp(cs_str[gt], "-")) {
-					if(!strncmp(rf_ctxt+1, "CG", 2)) ref_cpg = true;
+					if(!strncmp(prf_ctxt+1, "CG", 2)) ref_cpg = true;
 					if(x - prev_cpg_x == 1) {
 						if(ref_cpg) {
 							stats->CpG_ref[stats_all]++;
@@ -624,7 +616,7 @@ void print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *r
 	else {
 		uint32_t l = x - xstart;
 		for (uint32_t i = 0; i < 4 - l; i++)
-			rf_ctxt[i] = 'N';
+			rf_ctxt[i] = 0;
 		strncpy(rf_ctxt + 4 - l, rf, 3 + l);
 	}
 	if(skip) gt_store[4] = 0;

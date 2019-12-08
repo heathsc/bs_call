@@ -54,7 +54,7 @@ gt_status read_input(htsFile *sam_input, gt_vector * align_list,sr_param *param)
 	int curr_tid = -1, old_tid = -1;
 	bool chr_skip = false;
 	bool new_contig = false;
-	uint32_t max_pos = 0; // Position of righmost end of current pileup
+	uint32_t max_pos = 0; // Position of rightmost end of current pileup
 	uint32_t start_pos = 0; // Position of leftmost end of current pileup
 	uint32_t read_idx = 0, curr_pos = 0, start_idx = 0;
 
@@ -104,9 +104,7 @@ gt_status read_input(htsFile *sam_input, gt_vector * align_list,sr_param *param)
 		if(ret > 0) {
 			if(param->work.stats != NULL) {
 				param->work.stats->filter_cts[filtered]++;
-				int ix = reverse ? 1 : 0;
-				uint32_t l = al->read[ix] ? gt_vector_get_used(al->read[ix]) : 0;
-				param->work.stats->filter_bases[filtered] += l;
+				param->work.stats->filter_bases[filtered] += b->core.l_qseq;
 			}
 			continue;
 		}
@@ -143,9 +141,9 @@ gt_status read_input(htsFile *sam_input, gt_vector * align_list,sr_param *param)
 				if(start_pos > 0) {
 					if(al->forward_position > 0) {
 						if(al->forward_position > max_pos && (al->reverse_position > max_pos || al->reverse_position == 0)) {
-							if(al->forward_position - max_pos > 8) new_block = true;
+							if(al->forward_position - max_pos > 1) new_block = true;
 						}
-					} else if(al->reverse_position > max_pos && al->reverse_position - max_pos > 8) new_block = true;
+					} else if(al->reverse_position > max_pos && al->reverse_position - max_pos > 1) new_block = true;
 				}
 			}
 		}
@@ -210,20 +208,17 @@ gt_status read_input(htsFile *sam_input, gt_vector * align_list,sr_param *param)
 		if(chr_skip) continue;
 
 		// Update start and end position of contig
-		uint32_t x = al->forward_position;
-		uint32_t x1 = al->reverse_position;
-		if(x >= x1) {
-			assert(x > 0);
-			if(x + align_length > max_pos) max_pos = x + align_length;
-			if(x1 > 0) {
-				if(start_pos == 0 || x1 < start_pos) start_pos = x1;
-			} else if(start_pos == 0 || x < start_pos) start_pos = x;
+		uint32_t st, ml;
+		if(reverse) {
+			ml = al->reverse_position + al->reference_span[1];
+			st = al->reverse_position;
 		} else {
-			if(x1 + align_length > max_pos) max_pos = x1 + align_length;
-			if(x > 0) {
-				if(start_pos == 0 || x < start_pos) start_pos = x;
-			} else if(start_pos == 0 || x1 < start_pos) start_pos = x1;
+			ml = al->forward_position + al->reference_span[0];
+			st= al->forward_position;
 		}
+		if(ml > max_pos) max_pos = ml;
+		if(start_pos == 0 || start_pos > st) start_pos = st;
+		uint32_t x;
 		// Handle new read
 		if(alignment_flag & BAM_FPAIRED) {
 			// Backwards facing read, so the pair should already be present
@@ -316,7 +311,7 @@ gt_status read_input(htsFile *sam_input, gt_vector * align_list,sr_param *param)
 									uint32_t len2 = al->read[1] ? gt_vector_get_used(al->read[1]) : 0;
 									bool paired = len1 && len2;
 									param->work.stats->filter_cts[gt_flt_duplicate] += paired ? 2 : 1;
-									param->work.stats->filter_bases[gt_flt_none] += len1 + len2;
+									param->work.stats->filter_bases[gt_flt_duplicate] += len1 + len2;
 								}
 								al_skip = true;
 							}

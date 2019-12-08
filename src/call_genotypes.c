@@ -58,25 +58,25 @@ void *call_thread(void *arg) {
 			calc_gt_prob(tg, par, ref_st[i - work->vcf_x]);
 			double fs = 0.0;
 			if(par->defs.gt_het[tg->max_gt]) {
-				int ftab[4];
+				int ftab[4] = {0, 0, 0, 0};
 				switch(tg->max_gt) {
 				case 1: // AC
 					ftab[0] = tp->counts[0][0] + tp->counts[0][4];
 					ftab[1] = tp->counts[0][1] + tp->counts[0][5] + tp->counts[0][7];
 					ftab[2] = tp->counts[1][0] + tp->counts[1][4];
-					ftab[1] = tp->counts[1][1] + tp->counts[1][5] + tp->counts[1][7];
+					ftab[3] = tp->counts[1][1] + tp->counts[1][5] + tp->counts[1][7];
 					break;
 				case 2: // AG
 					ftab[0] = tp->counts[0][0];
 					ftab[1] = tp->counts[0][2] + tp->counts[0][6];
 					ftab[2] = tp->counts[1][0];
-					ftab[1] = tp->counts[1][2] + tp->counts[1][6];
+					ftab[3] = tp->counts[1][2] + tp->counts[1][6];
 					break;
 				case 3: // AT
 					ftab[0] = tp->counts[0][0] + tp->counts[0][4];
 					ftab[1] = tp->counts[0][3] + tp->counts[0][7];
 					ftab[2] = tp->counts[1][0] + tp->counts[1][4];
-					ftab[1] = tp->counts[1][3] + tp->counts[1][7];
+					ftab[3] = tp->counts[1][3] + tp->counts[1][7];
 					break;
 				case 5: // CG
 					ftab[0] = tp->counts[0][1] + tp->counts[0][5] + tp->counts[0][7];
@@ -177,10 +177,8 @@ void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const ui
 	}
 	work_t * const work = &param->work;
 	// Prepare printing
-//	fprintf(stderr, "call_genotypes() preparing for calc\n");
 	pthread_mutex_lock(&work->print_mutex);
 	while(param->work.vcf_n) {
-//		fprintf(stderr, "call_genotypes() waiting to dump new batch\n");
 		pthread_cond_wait(&work->print_cond, &work->print_mutex);
 	}
 	pthread_mutex_unlock(&work->print_mutex);
@@ -192,12 +190,17 @@ void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const ui
 	for(int i = 0; i < sz; i++) work->vcf[i].ready = false;
 	work->vcf_x = x;
 	work->vcf_ctg = ctg;
+	// Check meth profiling has finished before we switch the reference
+	pthread_mutex_lock(&work->mprof_mutex);
+	while(work->mprof_read_idx != work->mprof_write_idx) {
+		pthread_cond_wait(&work->mprof_cond, &work->mprof_mutex);
+	}
+	pthread_mutex_unlock(&work->mprof_mutex);
 	gt_string *tp = work->ref;
 	work->ref = work->ref1;
 	work->ref1 = tp;
 	work->vcf_n = sz;
 	pthread_mutex_lock(&work->print_mutex);
-//	fprintf(stderr,"call_genotypes(), deblocking print_cond\n");
 	pthread_cond_signal(&param->work.print_cond);
 	pthread_mutex_unlock(&work->print_mutex);
 	// Set up calculation threads
@@ -218,4 +221,3 @@ void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const ui
 	pthread_mutex_unlock(&work->vcf_mutex);
 	free(cpar);
 }
-

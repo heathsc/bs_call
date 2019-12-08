@@ -65,10 +65,8 @@ static void get_seq_and_qual(align_details * const al, bam1_t *b) {
 	uint32_t len1 = 1 + ((len + 1) & ~(uint32_t)1);
 	if (!al->read[ix]) {
 		 al->read[ix] = gt_vector_new(len1, sizeof(uint8_t));
-//		 al->qualities[ix] = gt_string_new(len1);
 	} else {
 		gt_vector_reserve(al->read[ix], len1, false);
-//		gt_string_resize(al->qualities[ix], len1);
 	}
 	const uint8_t *const sqb = bam_get_seq(b);
 	uint8_t *const sq = gt_vector_get_mem(al->read[ix], uint8_t);
@@ -86,10 +84,7 @@ static void get_seq_and_qual(align_details * const al, bam1_t *b) {
 		uint8_t c = sq[k];
 		if(c) sq[k] = (c - 1) | (q << 2);
 	}
-//	for(int k = 0; k < len; k++) al->qualities[ix]->buffer[k] = ql[k]+ QUAL_CONV;
-//	memcpy(al->qualities[ix]->buffer, ql, len);
 	gt_vector_set_used(al->read[ix],len);
-//	al->qualities[ix]->length = len;
 }
 
 static uint32_t get_bam_misms(align_details * const al, bam1_t *b) {
@@ -275,7 +270,6 @@ int get_next_align_details(htsFile * const sam_input, bam_hdr_t *hdr, hts_itr_t 
 			al->mapq[0] = c->qual;
 		}
 		if(c->qual < thresh && !(*filtered)) *filtered = gt_flt_mapq;
-		*align_length = get_bam_misms(al, b);
 		if(mult_seg) {
 			if(c->tid != c->mtid) {
 				if(!(*filtered)) *filtered = gt_flt_mismatch_chr;
@@ -304,6 +298,7 @@ int get_next_align_details(htsFile * const sam_input, bam_hdr_t *hdr, hts_itr_t 
 		 }
 		 // We only decode the sequence and the tags if the read is not filtered
 		 if(ret == 0) {
+			 *align_length = get_bam_misms(al, b);
 			 get_seq_and_qual(al, b);
 			 al->bs_strand = get_bs_strand(b);
 		 }

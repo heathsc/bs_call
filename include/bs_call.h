@@ -20,6 +20,7 @@
 // IMPORTANT!
 //
 // MIN_QUAL must not be lower than 1, and MAX_QUAL must be less than FLT_QUAL
+// and FLT_QUAL must be less than 64.
 //
 #define MAX_QUAL 43
 #define MIN_QUAL 20
@@ -223,12 +224,22 @@ typedef struct {
 #define VCF_FMT_CX VCF_INFO_CX
 
 typedef struct {
+	uint32_t x;
+	uint32_t max_pos;
+	align_details *al;
+	gt_vector *orig_pos[2];
+} mprof_thread_t;
+
+#define N_MPROF_BUFFERS 8
+
+typedef struct {
 	uint32_t y_waiting;
 	ctg_t *ctg_waiting;
 	gt_vector *align_list_waiting;
 	gt_vector *free_list_waiting;
 	bool process_end;
 	bool print_end;
+	bool mprof_end;
 	gt_vcf *vcf;
 	uint32_t vcf_x;
 	ctg_t *vcf_ctg;
@@ -239,6 +250,8 @@ typedef struct {
 	pthread_cond_t vcf_cond;
 	pthread_mutex_t process_mutex;
 	pthread_cond_t process_cond;
+	pthread_mutex_t mprof_mutex;
+	pthread_cond_t mprof_cond;
 	uint32_t n_contigs;
 	uint32_t n_regions;
 	faidx_t *seq_idx;
@@ -248,7 +261,6 @@ typedef struct {
 	region_t *curr_region;
 	gt_string *ref;
 	gt_string *ref1;
-	gt_vector *orig_pos;
 	dbsnp_ctg *dbSNP;
 	uint16_t n_dbSNP_prefixes;
 	char **dbSNP_prefix;
@@ -261,11 +273,14 @@ typedef struct {
 	bam_hdr_t *sam_header;
 	htsFile *sam_file;
 	hts_idx_t *sam_idx;
+	uint8_t flt_tab[768];
+	mprof_thread_t mprof_thread[N_MPROF_BUFFERS];
+	int mprof_read_idx;
+	int mprof_write_idx;
 } work_t;
 
 typedef struct {
 	char *flt_name[5];
-	char base_tab[256];
 	bool gt_het[10];
 	double logp[100];
 	double lfact_store[LFACT_STORE_SIZE];
@@ -336,7 +351,7 @@ void make_align_hash(align_hash * const ah, gt_string * const tag, const uint32_
 align_hash *make_new_align_hash(gt_vector * const free_hash_list, gt_string * const tag, const uint32_t alignment_flag, const uint32_t ix, align_details * const al);
 void add_al_hash_to_free_list(align_hash * const ah, gt_vector * const free_hash_list);
 bool check_for_tag_in_hash(const align_hash * const hash, gt_string * const tag);
-void meth_profile(const align_details * const al, const int k, const uint32_t x, gt_vector * const orig_pos, sr_param * const par);
+void meth_profile(const align_details * const al, const uint32_t x, gt_vector * const orig_pos[2], const int max_pos, sr_param * const par);
 void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const uint32_t x, const uint32_t y, sr_param * const param);
 bool get_sequence_index(sr_param * const par);
 bool get_sequence_string(ctg_t * const ctg, const uint32_t x, const uint32_t sz, ctg_t * const prev_ctg, gt_string * const ref, sr_param * const par);
