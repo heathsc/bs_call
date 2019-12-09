@@ -230,7 +230,7 @@ typedef struct {
 	gt_vector *orig_pos[2];
 } mprof_thread_t;
 
-#define N_MPROF_BUFFERS 8
+#define N_MPROF_BUFFERS 256
 
 typedef struct {
 	uint32_t y_waiting;
