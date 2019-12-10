@@ -52,12 +52,12 @@ void init_param(sr_param * const par) {
 	for(int q = MIN_QUAL; q < FLT_QUAL; q++) {
 		int x = q << 2;
 		// Strand 0 (non converted)
-		tab[x] = 9; tab[x + 1] = 4; tab[x + 2] = 8; tab[x + 3] = 5;
+		tab[x] = 11; tab[x + 1] = 6; tab[x + 2] = 10; tab[x + 3] = 7;
 		// Strand 1 (C2T)
 		x += 256;
-		tab[x] = 9; tab[x + 1] = 6; tab[x + 2] = 8; tab[x + 3] = 7;
+		tab[x] = 11; tab[x + 1] = 4; tab[x + 2] = 10; tab[x + 3] = 5;
 		// Strand 2 (G2A)
 		x += 256;
-		tab[x] = 11; tab[x + 1] = 4; tab[x + 2] = 10; tab[x + 3] = 5;
+		tab[x] = 9; tab[x + 1] = 6; tab[x + 2] = 8; tab[x + 3] = 7;
 	}
 };
