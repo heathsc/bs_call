@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <sys/wait.h>
 #include <pthread.h>
+#include <time.h>
 #include <htslib/sam.h>
 
 #include "gem_tools.h"
@@ -26,12 +27,20 @@ static void handle_end_of_block(align_hash ** align_hash_p, gt_vector *align_lis
 	}
 	int ix = gt_vector_get_used(align_list);
 	if (ix) {
+//		bool waiting = false;
+//		struct timespec start, stop;
 		pthread_mutex_lock(&work->process_mutex);
 		while(work->align_list_waiting) {
-//			fprintf(stderr,"handle_end_of_block() waiting for space\n");
+//			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
+//			waiting = true;
 			pthread_cond_wait(&work->process_cond, &work->process_mutex);
 		}
 		pthread_mutex_unlock(&work->process_mutex);
+//		if(waiting) {
+//			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
+//			double wait = 1.0e3 * (double)(stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec) * 1e-6;
+//			fprintf(stderr, "end_of_block() waiting for space for %gms\n", wait);
+//		}
 		work->y_waiting = max_pos;
 		int k = work->tid2id[curr_tid];
 		assert(k >= 0);
@@ -167,12 +176,20 @@ gt_status read_input(htsFile *sam_input, gt_vector * align_list,sr_param *param)
 				align_details **al_p = gt_vector_get_mem(align_list, align_details *);
 				uint32_t xx = (*al_p)->forward_position;
 				if(xx == 0) xx = (*al_p)->reverse_position;
+//				bool waiting = false;
+//				struct timespec start, stop;
 				pthread_mutex_lock(&param->work.process_mutex);
 				while(param->work.align_list_waiting) {
-//					fprintf(stderr, "read_line() waiting for space\n)");
+//					clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
+//					waiting = true;
 					pthread_cond_wait(&param->work.process_cond, &param->work.process_mutex);
 				}
 				pthread_mutex_unlock(&param->work.process_mutex);
+//				if(waiting) {
+//					clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
+//					double wait = 1.0e3 * (double)(stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec) * 1e-6;
+//					fprintf(stderr, "read_line() waiting for space for %gms\n", wait);
+//				}
 
 				// If we are starting a new contig, make sure we use the previous
 				// contig name for the last block!

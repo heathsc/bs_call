@@ -4,7 +4,7 @@
 #include <htslib/vcf.h>
 #include <htslib/faidx.h>
 
-#define BS_CALL_VERSION "2.1.0"
+#define BS_CALL_VERSION "2.1.1"
 
 #define STRING_EXP(tok) #tok
 #define STRING(tok) STRING_EXP(tok)
@@ -308,6 +308,7 @@ typedef struct {
 	bool blank_trim;
 	bool all_positions;
 	bool explicit_thread_distribution;
+	bool benchmark_mode;
 	uint8_t out_file_type;
 	BS_Caller caller;
 	int left_trim;

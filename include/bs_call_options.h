@@ -26,6 +26,7 @@ gt_option bs_call_options[] = {
   { 'C', "contig-bed", GT_OPT_REQUIRED, GT_OPT_STRING, 2, true, "<file> (BED)" , "" },
   { 'D', "dbsnp", GT_OPT_REQUIRED, GT_OPT_STRING, 2, true, "<file> (dbSNP processed file)" , "" },
   { 'A', "all-positions", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 2, true, "" , "" },
+  { 203, "benchmark-mode", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 2, true, "" , "" },
 	/* Model */
   { 'c', "conversion", GT_OPT_REQUIRED, GT_OPT_INT, 3, true, "<float>,<float>","Set under and over conversion rates (default "STRING(DEFAULT_UNDER_CONVERSION)","STRING(DEFAULT_OVER_CONVERSION)")"},	
   { 303, "reference-bias", GT_OPT_REQUIRED, GT_OPT_STRING, 3, true, "<float>","Set bias to reference homozygote (default "STRING(DEFAULT_REF_BIAS)")"},

@@ -421,7 +421,7 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 			bcf->n_fmt++;
 		}
 		htsFile *fp = par->work.vcf_file;
-		bcf_write(fp, par->work.vcf_hdr, bcf);
+		if(bcf_write(fp, par->work.vcf_hdr, bcf)) gt_fatal_error_msg("Failed to write vcf/bcf record");
 	}
 	bs_stats *stats = par->work.stats;
 	if(stats != NULL) {
@@ -687,54 +687,56 @@ void print_vcf_header(sr_param * const param, bam_hdr_t * hdr) {
 	param->work.vcf_file = hout;
 	if(param->num_threads[OUTPUT_THREADS] > 0) hts_set_threads(hout, param->num_threads[OUTPUT_THREADS]);
 	bcf_hdr_printf(bh, "##fileformat=%s", bcf_hdr_get_version(bh));
-	time_t cl = time(0);
-	struct tm *tt = localtime(&cl);
-	bcf_hdr_printf(bh, "##fileDate(dd/mm/yyyy)=%02d/%02d/%04d", tt->tm_mday, tt->tm_mon + 1, tt->tm_year + 1900);
-	bcf_hdr_printf(bh, "##source=bs_call_v%s,under_conversion=%g,over_conversion=%g,mapq_thresh=%d,bq_thresh=%d", BS_CALL_VERSION, param->under_conv, param->over_conv, param->mapq_thresh, param->min_qual);
-	if(param->work.dbSNP_header != NULL) bcf_hdr_printf(bh, "##dbsnp=<%s>", param->work.dbSNP_header);
-	// Scan header lines for @RG line (Read Groups)
-	// Keep track of barcodes encountered so we only print one lne per barcode
-	typedef struct {
-		char *str;
-		UT_hash_handle hh;
-	} sdict;
-	sdict *bc_dict = NULL;
-	char *c_p[5];
-	int ln_p[5];
 	gt_string *buf = gt_string_new(256);
-	const char *rg_keys[3] = {"BC", "SM", "DS"};
-	char *tp = hdr->text;
-	while(tp && *tp) {
-		if(!(strncmp(tp, "@RG\t", 4))) {
-			tp = scan_hdr_keys(tp + 4, 3, rg_keys, c_p, ln_p);
-			if(c_p[0] != NULL) {
-				sdict *sd = NULL;
-				HASH_FIND(hh, bc_dict, c_p[0], ln_p[0], sd);
-				if(sd == NULL) {
-					sd = gt_alloc(sdict);
-					sd->str = c_p[0];
-					HASH_ADD_KEYPTR(hh, bc_dict, sd->str, ln_p[0], sd);
-					gt_sprintf(buf, "##bs_call_sample_info=<ID=\"%.*s\"", ln_p[0], c_p[0]);
-					if(c_p[1] != NULL) gt_sprintf_append(buf,",SM=\"%.*s\"", ln_p[1], c_p[1]);
-					if(c_p[2] != NULL) gt_sprintf_append(buf,",DS=\"%.*s\"", ln_p[2], c_p[2]);
-					gt_string_append_string(buf, ">", 1);
-					bcf_hdr_append(bh, buf->buffer);
+	if(!param->benchmark_mode) {
+		time_t cl = time(0);
+		struct tm *tt = localtime(&cl);
+		bcf_hdr_printf(bh, "##fileDate(dd/mm/yyyy)=%02d/%02d/%04d", tt->tm_mday, tt->tm_mon + 1, tt->tm_year + 1900);
+		bcf_hdr_printf(bh, "##source=bs_call_v%s,under_conversion=%g,over_conversion=%g,mapq_thresh=%d,bq_thresh=%d", BS_CALL_VERSION, param->under_conv, param->over_conv, param->mapq_thresh, param->min_qual);
+		if(param->work.dbSNP_header != NULL) bcf_hdr_printf(bh, "##dbsnp=<%s>", param->work.dbSNP_header);
+		// Scan header lines for @RG line (Read Groups)
+		// Keep track of barcodes encountered so we only print one lne per barcode
+		typedef struct {
+			char *str;
+			UT_hash_handle hh;
+		} sdict;
+		sdict *bc_dict = NULL;
+		char *c_p[5];
+		int ln_p[5];
+		const char *rg_keys[3] = {"BC", "SM", "DS"};
+		char *tp = hdr->text;
+		while(tp && *tp) {
+			if(!(strncmp(tp, "@RG\t", 4))) {
+				tp = scan_hdr_keys(tp + 4, 3, rg_keys, c_p, ln_p);
+				if(c_p[0] != NULL) {
+					sdict *sd = NULL;
+					HASH_FIND(hh, bc_dict, c_p[0], ln_p[0], sd);
+					if(sd == NULL) {
+						sd = gt_alloc(sdict);
+						sd->str = c_p[0];
+						HASH_ADD_KEYPTR(hh, bc_dict, sd->str, ln_p[0], sd);
+						gt_sprintf(buf, "##bs_call_sample_info=<ID=\"%.*s\"", ln_p[0], c_p[0]);
+						if(c_p[1] != NULL) gt_sprintf_append(buf,",SM=\"%.*s\"", ln_p[1], c_p[1]);
+						if(c_p[2] != NULL) gt_sprintf_append(buf,",DS=\"%.*s\"", ln_p[2], c_p[2]);
+						gt_string_append_string(buf, ">", 1);
+						bcf_hdr_append(bh, buf->buffer);
+					}
 				}
 			}
+			tp = strchr(tp, '\n');
+			if(tp) tp++;
 		}
-		tp = strchr(tp, '\n');
-		if(tp) tp++;
-	}
-	if(bc_dict != NULL) {
-		sdict *tp, *tp1;
-		HASH_ITER(hh, bc_dict, tp, tp1) {
-			HASH_DEL(bc_dict,tp);
-			free(tp);
+		if(bc_dict != NULL) {
+			sdict *tp, *tp1;
+			HASH_ITER(hh, bc_dict, tp, tp1) {
+				HASH_DEL(bc_dict,tp);
+				free(tp);
+			}
 		}
 	}
 	// And now pick up the @SQ lines (Sequences)
 	const char *sq_keys[5] = {"SN", "LN", "AS", "M5", "SP"};
-	tp = hdr->text;
+	char *tp = hdr->text;
 	while(tp && *tp) {
 		char *c_p[5];
 		int ln_p[5];
@@ -784,7 +786,7 @@ void print_vcf_header(sr_param * const param, bam_hdr_t * hdr) {
 	bcf_hdr_append(bh, "##FORMAT=<ID=FS,Number=1,Type=Integer,Description=\"Phred scaled log p-value from Fishers exact test of strand bias\"");
 	bcf_hdr_append(bh, "##FORMAT=<ID=GOF,Number=1,Type=Integer,Description=\"Phred scaled goodness of fit LR test for best genotype call against best call with free allele frequency parameter");
 	if(param->sample_name) bcf_hdr_add_sample(bh, param->sample_name);
-	bcf_hdr_write(hout, bh);
+	if(bcf_hdr_write(hout, bh)) gt_fatal_error_msg("Failed to write vcf/bcf header");
 	// Lookup correspondences between contigs and BCF rid and
 	for(int i = 0; i < bh->n[BCF_DT_CTG]; i++) {
 		int tid = bam_name2id(hdr, bh->id[BCF_DT_CTG][i].key);

@@ -61,6 +61,8 @@ The parameters configured for this example are -p (Paired End Data) and -L5 (5 b
 ---------
 Changelog
 ---------
+    2.1.1 Switched to htslib 1.10
+          Added --benchmark-mode where date and version numbers are not written to output files
     2.1.0 Reorganized and cleaned up distribution.  
           Switched to using htslib for input and output, so can now read from SAM or BAM and
           write to VCF or BCF natively.

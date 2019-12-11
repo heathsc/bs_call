@@ -32,6 +32,7 @@ void init_param(sr_param * const par) {
 	par->keep_duplicates = false;
 	par->ignore_duplicates = false;
 	par->all_positions = false;
+	par->benchmark_mode = false;
 	par->work.print_end = par->work.process_end = false;
 	par->work.n_dbSNP_prefixes = 0;
 	par->work.vcf_ctg = NULL;

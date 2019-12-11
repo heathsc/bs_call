@@ -108,6 +108,9 @@ gt_status parse_arguments(int argc, char **argv, sr_param *const par) {
 		case 202:
 			par->report_file = optarg;
 			break;
+		case 203:
+			par->benchmark_mode = true;
+			break;
 			/* Model */
 		case 'c':
 			if (sscanf(optarg, "%lf,%lf", &par->under_conv, &par->over_conv) != 2)

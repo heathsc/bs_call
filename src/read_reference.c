@@ -16,6 +16,7 @@
 
 // Internal structures from htslib
 typedef struct {
+	int id;
     uint32_t line_len, line_blen;
     uint64_t len;
     uint64_t seq_offset;
@@ -54,6 +55,7 @@ bool load_sequence(ctg_t * const contig, faidx_t *idx, const bool calc_gc) {
 	khiter_t iter = kh_get(s, idx->hash, contig->name);
 	if(iter == kh_end(idx->hash)) return true; // Sequence not found
 	faidx1_t v = kh_value(idx->hash, iter);
+	fprintf(stderr,"len = %lu\n", v.len);
 	int ret = bgzf_useek(idx->bgzf, v.seq_offset, SEEK_SET);
 	if(ret < 0) return true; // Seek failed
 	// We pack the reference in 3 bits per base, 5 bases to a uint16_t;
