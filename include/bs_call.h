@@ -4,7 +4,7 @@
 #include <htslib/vcf.h>
 #include <htslib/faidx.h>
 
-#define BS_CALL_VERSION "2.1.1"
+#define BS_CALL_VERSION "2.1.2"
 
 #define STRING_EXP(tok) #tok
 #define STRING(tok) STRING_EXP(tok)

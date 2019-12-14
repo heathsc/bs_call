@@ -166,7 +166,8 @@ gt_status parse_arguments(int argc, char **argv, sr_param *const par) {
 
 	if(!par->explicit_thread_distribution) {
 		// We only can use extra input and output threads if the corresponding files are BGZF compressed
-		bool input_compressed = par->work.sam_file->format.compression == bgzf;
+		bool input_compressed = (par->work.sam_file->format.compression == bgzf ||
+				par->work.sam_file->format.format == cram);
 		bool output_compressed = par->out_file_type & FT_GZ;
 		int nn = 10;
 		if(!input_compressed) nn -= 3;

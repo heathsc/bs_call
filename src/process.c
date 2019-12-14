@@ -140,8 +140,16 @@ gt_status open_input_file(sr_param * const param) {
 	htsFile *in_file = NULL;
 	param->work.sam_idx = NULL;
 	if(param->input_file != NULL) {
-		in_file = sam_open(param->input_file, "r");
-		if(in_file != NULL) param->work.sam_idx = sam_index_load(in_file, param->input_file);
+		in_file = hts_open(param->input_file, "r");
+		if(in_file != NULL) {
+			size_t l = strlen(param->name_reference_file);
+			char *fai = gt_malloc(l + 5);
+			sprintf(fai, "%s.fai", param->name_reference_file);
+			int ret = hts_set_fai_filename(in_file, fai);
+			if(ret) fprintf(stderr,"Could not open reference index %s\n", fai);
+			free(fai);
+			param->work.sam_idx = sam_index_load(in_file, param->input_file);
+		}
 	} else {
 		hFILE *hf = hdopen(STDIN_FILENO, "r");
 		if(hf != NULL) in_file = hts_hopen(hf, "<STDIN>", "r");
@@ -149,7 +157,7 @@ gt_status open_input_file(sr_param * const param) {
 	param->work.sam_file = in_file;
 	if(!in_file) {
 		err = GT_STATUS_FAIL;
-		fprintf(stderr, "Could not open input file (%s)\n", param->input_file ? param->input_file : "<STDIN>");
+		fprintf(stderr, "Could not open input file %s\n", param->input_file ? param->input_file : "<STDIN>");
 	}
 	return err;
 }

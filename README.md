@@ -61,6 +61,7 @@ The parameters configured for this example are -p (Paired End Data) and -L5 (5 b
 ---------
 Changelog
 ---------
+    2.1.2 Improved the support for CRAM input
     2.1.1 Switched to htslib 1.10
           Added --benchmark-mode where date and version numbers are not written to output files
     2.1.0 Reorganized and cleaned up distribution.  
