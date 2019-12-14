@@ -25,7 +25,7 @@ BIN=$(addprefix $(FOLDER_BIN)/, $(PROG))
 INC=
 
 
-BS_CALL_LIBS:= $(LIBS) -lhts -lpthread
+BS_CALL_LIBS:= $(LIBS) -lpthread
 
 DBSNP_LIBS:=-lm
 ifeq ($(HAVE_OPENMP),1)
