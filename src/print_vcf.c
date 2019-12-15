@@ -188,7 +188,6 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 	const char *alt = ref_alt[gt][rfix];
 	const stats_mut mut = mut_type[gt][rfix];
 	const int fs = (int)(-gtm->fisher_strand * 10.0 + 0.5);
-	const int gof = (int)(gtm->gt_gof * 10.0 + 0.5);
 	const uint32_t qd = dp1 > 0 ? phred / dp1 : phred;
 	uint32_t flt = 0;
 	if(!skip) {
@@ -227,7 +226,6 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 		if (qd < 2) flt |= 2;
 		if (fs > 60) flt |= 4;
 		if (gtm->mq < 40) flt |= 8;
-		if (gof > 20) flt |= 16;
 		int fid = par->work.vcf_ids[VCF_FLT_PASS];
 		if(!flt) {
 			bool mac1 = false;
@@ -306,7 +304,7 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 			cpg = ".";
 	}
 	if(!skip) {
-		bcf->n_fmt = 12;
+		bcf->n_fmt = 11;
 		// Handle sample fields
 		kstring_t *str = &bcf->indiv;
 		// GT
@@ -319,7 +317,7 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 		// FT
 		char fbuf[24];
 		int flen = 0;
-		if(flt & 31) {
+		if(flt & 15) {
 			char *p = fbuf;
 			int f_ix = 0;
 			uint32_t flt1 = flt & 31;
@@ -411,9 +409,6 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 		bcf_enc_int1(str, par->work.vcf_ids[VCF_FMT_CX]);
 		bcf_enc_size(str, 5, BCF_BT_CHAR);
 		kputsn_(ctxt, 5, str);
-		// GOF
-		bcf_enc_int1(str, par->work.vcf_ids[VCF_FMT_GOF]);
-		bcf_enc_int1(str, gof);
 		// FS
 		if(gt_het[gt]) {
 			bcf_enc_int1(str, par->work.vcf_ids[VCF_FMT_FS]);
@@ -465,7 +460,6 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 			add_flt_counts(stats->qd_stats, qd, gt_het[gt]);
 			add_flt_counts(stats->fs_stats, fs, gt_het[gt]);
 			add_flt_counts(stats->mq_stats, gtm->mq, gt_het[gt]);
-			add_flt_counts(stats->gof_stats, gof, gt_het[gt]);
 			stats->filter_counts[gt_het[gt] ? 1 : 0][flt & 31]++;
 			stats->qual[all_sites][phred]++;
 			if(db_prefix != NULL) {
@@ -769,7 +763,6 @@ void print_vcf_header(sr_param * const param, bam_hdr_t * hdr) {
 	bcf_hdr_append(bh, "##FILTER=<ID=qd2,Description=\"Quality By Depth below 2\">");
 	bcf_hdr_append(bh, "##FILTER=<ID=fs60,Description=\"Fisher Strand above 60\">");
 	bcf_hdr_append(bh, "##FILTER=<ID=mq40,Description=\"RMS Mapping Quality below 40\">");
-	bcf_hdr_append(bh, "##FILTER=<ID=gof20,Description=\"Goodness of fit above 20\">");
 	bcf_hdr_append(bh, "##FILTER=<ID=mac1,Description=\"Minor allele count <= 1\">");
 	bcf_hdr_append(bh, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
 	bcf_hdr_append(bh, "##FORMAT=<ID=FT,Number=1,Type=String,Description=\"Sample Genotype Filter\">");
@@ -784,7 +777,6 @@ void print_vcf_header(sr_param * const param, bam_hdr_t * hdr) {
 	bcf_hdr_append(bh, "##FORMAT=<ID=CG,Number=1,Type=String,Description=\"CpG Status (from genotype calls: Y/N/H/?)\">");
 	bcf_hdr_append(bh, "##FORMAT=<ID=CX,Number=1,Type=String,Description=\"5 base sequence context (from position -2 to +2 on the positive strand) determined from genotype call\">");
 	bcf_hdr_append(bh, "##FORMAT=<ID=FS,Number=1,Type=Integer,Description=\"Phred scaled log p-value from Fishers exact test of strand bias\"");
-	bcf_hdr_append(bh, "##FORMAT=<ID=GOF,Number=1,Type=Integer,Description=\"Phred scaled goodness of fit LR test for best genotype call against best call with free allele frequency parameter");
 	if(param->sample_name) bcf_hdr_add_sample(bh, param->sample_name);
 	if(bcf_hdr_write(hout, bh)) gt_fatal_error_msg("Failed to write vcf/bcf header");
 	// Lookup correspondences between contigs and BCF rid and
@@ -798,9 +790,9 @@ void print_vcf_header(sr_param * const param, bam_hdr_t * hdr) {
 	// Lookup filter/info/fmt IDs
 	vdict_t *d = (vdict_t *)bh->dict[BCF_DT_ID];
 	khint_t k;
-	char *names[17] = { "PASS", "fail", "mac1", "CX" ,"GT", "FT", "GL", "GQ", "DP", "MQ", "QD", "MC8", "AMQ", "CS", "CG", "FS", "GOF"};
+	char *names[16] = { "PASS", "fail", "mac1", "CX" ,"GT", "FT", "GL", "GQ", "DP", "MQ", "QD", "MC8", "AMQ", "CS", "CG", "FS"};
 
-	for(int i = 0; i < 17; i++) {
+	for(int i = 0; i < 16; i++) {
 		k = kh_get(vdict, d, names[i]);
 		// Shouldn't happen because we've just added it!
 		if(k == kh_end(d)) {

@@ -152,7 +152,6 @@ typedef struct {
 	gt_vector *fs_stats;
 	gt_vector *qd_stats;
 	gt_vector *mq_stats;
-	gt_vector *gof_stats;
 	uint64_t filter_counts[2][32];
 	double CpG_ref_meth[2][101];
 	double CpG_nonref_meth[2][101];
@@ -167,7 +166,6 @@ typedef struct {
 	uint64_t counts[8];
 	int qual[8]; // Average quality per base type
 	double gt_prob[10]; // Genotype log probabilities (Log10)
-	double gt_gof; // Goodness of fit LR (Log10)
 	double fisher_strand; // Allele strand bias LR (Log10)
 	int mq; // RMS Mapping quality
 	int aq; // Average base quality
@@ -220,7 +218,6 @@ typedef struct {
 #define VCF_FMT_CS 13
 #define VCF_FMT_CG 14
 #define VCF_FMT_FS 15
-#define VCF_FMT_GOF 16
 #define VCF_FMT_CX VCF_INFO_CX
 
 typedef struct {
@@ -280,7 +277,7 @@ typedef struct {
 } work_t;
 
 typedef struct {
-	char *flt_name[5];
+	char *flt_name[4];
 	bool gt_het[10];
 	double logp[100];
 	double lfact_store[LFACT_STORE_SIZE];

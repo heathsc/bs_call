@@ -88,20 +88,9 @@ void output_stats(sr_param *par) {
 		}
 	}
 	if(term == '{') fputc(term, fp);
-	fputs("\n\t\t\t},\n", fp);
-	fputs("\t\t\t\"GoodnessOfFit\": ", fp);
-	term = '{';
-	for(int i = 0; i < stats->gof_stats->used; i++) {
-		fstats_cts *c = gt_vector_get_elm(stats->gof_stats, i, fstats_cts);
-		if(c->cts[0] + c->cts[1] > 0) {
-			fprintf(fp,"%c\n\t\t\t\t\"%d\": {\"NonVariant\": %" PRIu64 ", \"Variant\": %" PRIu64 "}", term, i, c->cts[0], c->cts[1]);
-			term = ',';
-		}
-	}
-	if(term == '{') fputc(term, fp);
 	fputs("\n\t\t\t}\n\t\t},\t\t\"VCFFilterStats\": {\n", fp);
 	fprintf(fp,"\t\t\t\"PASS\": {\"NonVariant\": %" PRIu64 ", \"Variant\": %" PRIu64 "}", stats->filter_counts[0][0], stats->filter_counts[1][0]);
-	for(int i = 1; i < 32; i++) {
+	for(int i = 1; i < 16; i++) {
 		fputs(",\n\t\t\t", fp);
 		int k = i;
 		int f_ix = 0;
@@ -317,11 +306,9 @@ void init_stats(sr_param *par) {
 		stats->qd_stats = gt_vector_new(256, sizeof(fstats_cts));
 		stats->fs_stats = gt_vector_new(256, sizeof(fstats_cts));
 		stats->mq_stats = gt_vector_new(256, sizeof(fstats_cts));
-		stats->gof_stats = gt_vector_new(256, sizeof(fstats_cts));
 		memset(stats->meth_profile->memory, 0, sizeof(meth_cts) * stats->meth_profile->elements_allocated);
 		memset(stats->qd_stats->memory, 0, sizeof(fstats_cts) * stats->qd_stats->elements_allocated);
 		memset(stats->fs_stats->memory, 0, sizeof(fstats_cts) * stats->fs_stats->elements_allocated);
 		memset(stats->mq_stats->memory, 0, sizeof(fstats_cts) * stats->mq_stats->elements_allocated);
-		memset(stats->gof_stats->memory, 0, sizeof(fstats_cts) * stats->gof_stats->elements_allocated);
 	}
 }

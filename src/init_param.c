@@ -12,7 +12,7 @@
 
 void init_param(sr_param * const par) {
 
-	const char *flts[5]= { "q20", "qd2", "fs60", "mq40", "gof20" };
+	const char *flts[4]= { "q20", "qd2", "fs60", "mq40" };
 	const bool het[10] = { false, true, true, true, false, true, true, false, true, false };
 
 	memset(par, 0, sizeof(sr_param));
@@ -45,7 +45,7 @@ void init_param(sr_param * const par) {
 	pthread_mutex_init(&par->work.mprof_mutex, NULL);
 	pthread_cond_init(&par->work.mprof_cond, NULL);
 	defs_t * const defs = &par->defs;
-	for(int i = 0; i < 5 ;i++) defs->flt_name[i] = strdup(flts[i]);
+	for(int i = 0; i < 4 ;i++) defs->flt_name[i] = strdup(flts[i]);
 	for(int i = 0; i < 10; i++) defs->gt_het[i] = het[i];
 	lfact_store_init(defs->lfact_store);
 	for(int i = 0; i < 100; i++) defs->logp[i] = log(0.01 * (double)(i + 1));

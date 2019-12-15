@@ -5,20 +5,6 @@ AC_SUBST([HAVE_ZLIB])
 AC_CHECK_LIB([bz2], [BZ2_bzReadOpen], [HAVE_BZLIB=1])
 AC_SUBST([HAVE_BZLIB])
 
-AC_ARG_WITH(gsl,
-[AS_HELP_STRING([--with-gsl=PATH],
-		[specify prefix directory for installed gsl library.])])
-if test "x$with_gsl" != "x"; then
-      GSLLIBS="-L$with_gsl/lib -lgsl -lgslcblas"
-		GSLINC="-I$with_gsl/include"
-else
-      GSLLIBS="-lgsl -lgslcblas"
-		GSLINC=""
-fi
-
-AC_SUBST([GSLLIBS])
-AC_SUBST([GSLINC])
-
 AC_ARG_WITH(htslib,
 [AS_HELP_STRING([--with-htslib=PATH],
 		[specify prefix directory for installed htslib library.])])
