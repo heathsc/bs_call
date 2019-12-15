@@ -661,10 +661,6 @@ void print_vcf_header(sr_param * const param, bam_hdr_t * hdr) {
 	}
 	param->work.vcf_hdr = bh;
 
-	if(!param->output_file && (param->out_file_type & FT_GZ) && isatty(fileno(stdout))) {
-		fprintf(stderr, "Will not output compressed data to terminal\n");
-		param->out_file_type &= ~FT_GZ;
-	}
 	char mode[4];
 	mode[0] = 'w';
 	int i = 1;

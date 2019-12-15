@@ -160,7 +160,23 @@ gt_status parse_arguments(int argc, char **argv, sr_param *const par) {
 	else if (par->min_qual > MAX_QUAL) par->min_qual = MAX_QUAL;
 	// Check input and output files
 	if(open_input_file(par) != GT_STATUS_OK) return GT_STATUS_FAIL;
-
+	if(par->out_file_type == FT_UNKN) {
+		// Set a sensible default
+		par->out_file_type = FT_VCF;
+		if(par->output_file != NULL) {
+			// Check if we recognize the file type from the name
+			char *p = strrchr(par->output_file, '.');
+			if(p) {
+				if(!strcmp(p + 1, "gz")) {
+					if(p - par->output_file >= 4 && !strncmp(p - 4, ".vcf", 4)) par->out_file_type = FT_VCF_GZ;
+				} else if(!strcmp(p + 1, "bcf")) par->out_file_type = FT_BCF_GZ;
+			}
+		}
+	}
+	if(!par->output_file && (par->out_file_type != FT_VCF) && isatty(fileno(stdout))) {
+		fprintf(stderr, "Will not output binary and/or compressed data to terminal\n");
+		par->out_file_type = FT_VCF;
+	}
 	// Unless explicitly specified, partition the extra threads roughly in proportion 4:3:3 for calc, input and output
 	// With a little less going to the input threads depending on how the division works out
 

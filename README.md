@@ -11,10 +11,8 @@ Installation
 Before starting the installation of bscall, you should check if your
 system has the GSL library already installed.
 
-If your system does not have GSL library then you can download it from
-[GSL](https://www.gnu.org/software/gsl/) and follow the installation
-steps. Once GSL is available on your system then you can compile and
-install bscall.
+If your system does not have the hts library (htslib - used by samtools and
+bcftools) then you should install it before proceeding.
 
 Configure:
 
@@ -22,14 +20,14 @@ The compilation should be configured by typing:
 
 	./configure
 	
-If GSL is not in a standard location on your system then the location
-should be specified using the --with-gsl option to configure. For
-example, if the installation prefix for the gsl library is /opt/local
+If htslib is not in a standard location on your system then the location
+should be specified using the --with-htslib option to configure. For
+example, if the installation prefix for htslib is /opt/local
 (so the libraries can be found in /opt/local/lib and the include
-directory gsl in /opt/local/include) then the configuration command
+directory htslib in /opt/local/include) then the configuration command
 line should be:
 
-	./configure --with-gsl=/opt/local
+	./configure --with-htslib=/opt/local
 
 Compile:
 
@@ -51,16 +49,18 @@ Running bscall
 
 Run bscall from a BAM file to get a bcf output:
 
-    samtools view -h my_aligned.bam chr1 | bs_call -r my_reference.fasta -p -L5 -n my_sample_name | bcftools convert -o mysample_chr1.bcf -O b
-
-This command assumes that you have samtools and bcftools already installed on your system.
+    bs_call -r my_reference.fasta -p -L5 -n my_sample_name -o mysample.bcf mysample.bam
 
 The parameters configured for this example are -p (Paired End Data) and -L5 (5 bases to trim from left of read pair).
-
 
 ---------
 Changelog
 ---------
+    2.1.3 If output format is not explicilty specified, an attempt to guess the format from the filename is made (i.e.,
+	       if the output file ends in .bcf or .vcf.gz the appropriate file type will be selected).
+	 2.1.3 If not output name is set (so output is to standard out) and standard out is a terminal, output format is set 
+	       to uncompressed VCF, irrespective of the specified output format.
+    2.1.3 Removed calculation of GOF (goodness of fit) filter as it is expensive, non-standard and unreliable
     2.1.2 Improved the support for CRAM input
     2.1.1 Switched to htslib 1.10
           Added --benchmark-mode where date and version numbers are not written to output files

@@ -22,7 +22,7 @@ void init_param(sr_param * const par) {
 	par->blank_trim = false;
 	par->keep_unmatched = false;
 	par->caller = maximum_likelihood;
-	par->out_file_type = FT_VCF;
+	par->out_file_type = FT_UNKN;
 	par->mapq_thresh = DEFAULT_MAPQ_THRESH;
 	par->min_qual = MIN_QUAL;
 	par->max_template_len = DEFAULT_MAX_TEMPLATE_LEN;
