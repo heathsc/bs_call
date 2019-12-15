@@ -10,7 +10,6 @@
 #include <ctype.h>
 #include <time.h>
 #include <pthread.h>
-#include <gsl/gsl_multimin.h>
 #include "gem_tools.h"
 
 #include "bs_call.h"

@@ -288,7 +288,7 @@ int get_next_align_details(htsFile * const sam_input, bam_hdr_t *hdr, hts_itr_t 
 				}
 			}
 			if(mult_seg && !(*filtered) && !keep_unmatched) {
-				if(abs(c->isize) > max_template_len) *filtered = gt_flt_insert_size;
+				if(llabs(c->isize) > max_template_len) *filtered = gt_flt_insert_size;
 			}
 		}
 		*alignment_flag = flag;
