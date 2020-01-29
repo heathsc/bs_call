@@ -241,9 +241,7 @@ int get_next_align_details(htsFile * const sam_input, bam_hdr_t *hdr, hts_itr_t 
 				else if(flag & BAM_FQCFAIL) *filtered = gt_flt_qc;
 				else if(flag & BAM_FDUP) {
 					if(!ignore_dup) *filtered = gt_flt_duplicate;
-				} else {
-					if(!keep_unmatched) *filtered = gt_flt_not_correctly_aligned;
-				}
+				} else *filtered = gt_flt_not_correctly_aligned;
 			}
 		} else {
 			if(flag & (BAM_FUNMAP | BAM_FQCFAIL | BAM_FSECONDARY |
@@ -270,28 +268,32 @@ int get_next_align_details(htsFile * const sam_input, bam_hdr_t *hdr, hts_itr_t 
 			al->mapq[0] = c->qual;
 		}
 		if(c->qual < thresh && !(*filtered)) *filtered = gt_flt_mapq;
+		*alignment_flag = flag;
 		if(mult_seg) {
 			if(c->tid != c->mtid) {
 				if(!(*filtered)) *filtered = gt_flt_mismatch_chr;
 				if(keep_unmatched) mis_matched = true;
-			} else {
-				if(*reverse) {
-					if(c->pos < c->mpos) {
-						 if(!(*filtered)) *filtered = gt_flt_orientation;
-						 if(mis_matched) al->forward_position = 0;
-					}
-				} else {
-					if(c->pos > c->mpos) {
-						if(!(*filtered)) *filtered = gt_flt_orientation;
-						if(mis_matched) al->reverse_position = 0;
-					}
+			}
+			if(!(*filtered)) {
+				if(llabs(c->isize) > max_template_len) {
+					*filtered = gt_flt_insert_size;
+					if(keep_unmatched) mis_matched = true;
 				}
 			}
-			if(mult_seg && !(*filtered) && !keep_unmatched) {
-				if(llabs(c->isize) > max_template_len) *filtered = gt_flt_insert_size;
+			if(*reverse) {
+				if(c->pos < c->mpos) {
+					if(!(*filtered)) *filtered = gt_flt_orientation;
+					if(keep_unmatched) mis_matched = true;
+				}
+				if(mis_matched) al->forward_position = 0;
+			} else {
+				if(c->pos > c->mpos) {
+					if(!(*filtered)) *filtered = gt_flt_orientation;
+					if(keep_unmatched) mis_matched = true;
+				}
+				if(mis_matched) al->reverse_position = 0;
 			}
 		}
-		*alignment_flag = flag;
 		 if(!mult_seg || mis_matched) *alignment_flag &= ~BAM_FPAIRED;
 		 if(*filtered) {
 			 if(!(keep_unmatched && (*filtered == gt_flt_insert_size || *filtered == gt_flt_mismatch_chr || *filtered == gt_flt_orientation))) ret = 1;

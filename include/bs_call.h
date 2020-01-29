@@ -1,10 +1,11 @@
 #ifndef BS_CALL_H
 
+#include <assert.h>
 #include <htslib/sam.h>
 #include <htslib/vcf.h>
 #include <htslib/faidx.h>
 
-#define BS_CALL_VERSION "2.1.3"
+#define BS_CALL_VERSION "2.1.4"
 
 #define STRING_EXP(tok) #tok
 #define STRING(tok) STRING_EXP(tok)
@@ -242,13 +243,16 @@ typedef struct {
 	ctg_t *vcf_ctg;
 	int vcf_size, vcf_n;
 	pthread_mutex_t print_mutex;
-	pthread_cond_t print_cond;
+	pthread_cond_t print_cond1;
+	pthread_cond_t print_cond2;
 	pthread_mutex_t vcf_mutex;
 	pthread_cond_t vcf_cond;
 	pthread_mutex_t process_mutex;
-	pthread_cond_t process_cond;
+	pthread_cond_t process_cond1;
+	pthread_cond_t process_cond2;
 	pthread_mutex_t mprof_mutex;
-	pthread_cond_t mprof_cond;
+	pthread_cond_t mprof_cond1;
+	pthread_cond_t mprof_cond2;
 	uint32_t n_contigs;
 	uint32_t n_regions;
 	faidx_t *seq_idx;

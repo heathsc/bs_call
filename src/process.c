@@ -21,19 +21,9 @@ void *mprof_thread(void *arg) {
 	sr_param * const par = arg;
 	pthread_mutex_lock(&par->work.mprof_mutex);
 	while(1) {
-//		bool waiting = false;
-//		struct timespec start, stop;
 		while(par->work.mprof_read_idx == par->work.mprof_write_idx && !par->work.mprof_end) {
-//			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
-//			waiting = true;
-			pthread_cond_wait(&par->work.mprof_cond, &par->work.mprof_mutex);
+			pthread_cond_wait(&par->work.mprof_cond1, &par->work.mprof_mutex);
 		}
-//		if(waiting) {
-//			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
-//			double wait = 1.0e3 * (double)(stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec) * 1e-6;
-//			fprintf(stderr, "mprof_thread() - waiting for %gms\n", wait);
-//
-//		}
 		bool end = (par->work.mprof_read_idx == par->work.mprof_write_idx);
 		int ix = par->work.mprof_read_idx;
 		pthread_mutex_unlock(&par->work.mprof_mutex);
@@ -42,8 +32,7 @@ void *mprof_thread(void *arg) {
 		meth_profile(mp->al, mp->x, mp->orig_pos, mp->max_pos, par);
 		pthread_mutex_lock(&par->work.mprof_mutex);
 		par->work.mprof_read_idx = (ix + 1) % N_MPROF_BUFFERS;
-//		fprintf(stderr,"BB: setting rix to %d\n", par->work.mprof_read_idx);
-		pthread_cond_signal(&par->work.mprof_cond);
+		pthread_cond_broadcast(&par->work.mprof_cond2);
 	}
 	return NULL;
 }
@@ -54,19 +43,10 @@ void *process_thread(void *arg) {
 	work_t * const work = &par->work;
 	while(true) {
 		pthread_mutex_lock(&par->work.process_mutex);
-//		bool waiting = false;
-//		struct timespec start, stop;
 		while(!par->work.align_list_waiting && !par->work.process_end) {
-//			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
-//			waiting = true;
-			pthread_cond_wait(&par->work.process_cond, &par->work.process_mutex);
+			pthread_cond_wait(&par->work.process_cond1, &par->work.process_mutex);
 		}
 		pthread_mutex_unlock(&par->work.process_mutex);
-//		if(waiting) {
-//			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
-//			double wait = 1.0e3 * (double)(stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec) * 1e-6;
-//			fprintf(stderr, "process_thread() - waiting for for %gms\n", wait);
-//		}
 		gt_vector *alist = work->align_list_waiting;
 		if(alist != NULL) {
 			ctg_t *ctg = work->ctg_waiting;
@@ -75,7 +55,7 @@ void *process_thread(void *arg) {
 			work->free_list_waiting = prev_align;
 			work->align_list_waiting = NULL;
 			pthread_mutex_lock(&par->work.process_mutex);
-			pthread_cond_signal(&work->process_cond);
+			pthread_cond_signal(&work->process_cond2);
 			pthread_mutex_unlock(&par->work.process_mutex);
 			gt_status err = process_template_vector(alist, ctg, pos, par);
 			if(err != GT_STATUS_OK) break;
@@ -89,38 +69,21 @@ void *print_thread(void *arg) {
 	sr_param * const par = arg;
 	bcf1_t *bcf = bcf_init();
 
+	pthread_mutex_lock(&par->work.print_mutex);
 	while(1) {
-//		bool waiting = false;
-//		struct timespec start, stop;
-		pthread_mutex_lock(&par->work.print_mutex);
 		while(!par->work.vcf_n && !par->work.print_end) {
-//			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
-//			waiting = true;
-			pthread_cond_wait(&par->work.print_cond, &par->work.print_mutex);
+			pthread_cond_wait(&par->work.print_cond1, &par->work.print_mutex);
 		}
 		pthread_mutex_unlock(&par->work.print_mutex);
-//		if(waiting) {
-//			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
-//			double wait = 1.0e3 * (double)(stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec) * 1e-6;
-//			fprintf(stderr, "print_thread A () - waiting for %gms\n", wait);
-//		}
 		if(par->work.vcf_n) {
 			const char *ref_st = gt_string_get_string(par->work.ref);
 			for(int i = 0; i < par->work.vcf_n; i++) {
 				while(!par->work.vcf[i].ready) {
-//					waiting = false;
 					pthread_mutex_lock(&par->work.vcf_mutex);
 					while(!par->work.vcf[i].ready) {
-//						clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
-//						waiting = true;
 						pthread_cond_wait(&par->work.vcf_cond, &par->work.vcf_mutex);
 					}
 					pthread_mutex_unlock(&par->work.vcf_mutex);
-//					if(waiting) {
-//						clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
-//						double wait = 1.0e3 * (double)(stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec) * 1e-6;
-//						fprintf(stderr, "print_thread B () - waiting for %gms\n", wait);
-//					}
 				}
 				print_vcf_entry(bcf, par->work.vcf_ctg, &par->work.vcf[i].gtm, ref_st, i + par->work.vcf_x,
 						par->work.vcf_x, par->work.vcf[i].skip, par);
@@ -128,8 +91,7 @@ void *print_thread(void *arg) {
 			flush_vcf_entries(bcf, par);
 			par->work.vcf_n = 0;
 			pthread_mutex_lock(&par->work.print_mutex);
-			pthread_cond_signal(&par->work.print_cond);
-			pthread_mutex_unlock(&par->work.print_mutex);
+			pthread_cond_signal(&par->work.print_cond2);
 		} else break;
 	}
 	return NULL;
@@ -200,10 +162,12 @@ gt_status bs_call_process(sr_param * const param) {
 			param->work.print_end = true;
 			param->work.mprof_end = true;
 			pthread_mutex_lock(&param->work.mprof_mutex);
-			pthread_cond_signal(&param->work.mprof_cond);
+			pthread_cond_broadcast(&param->work.mprof_cond1);
+			pthread_cond_broadcast(&param->work.mprof_cond2);
 			pthread_mutex_unlock(&param->work.mprof_mutex);
 			pthread_mutex_lock(&param->work.print_mutex);
-			pthread_cond_signal(&param->work.print_cond);
+			pthread_cond_signal(&param->work.print_cond1);
+			pthread_cond_signal(&param->work.print_cond2);
 			pthread_mutex_unlock(&param->work.print_mutex);
 			pthread_join(mprof_thr, 0);
 			pthread_join(print_thr, 0);

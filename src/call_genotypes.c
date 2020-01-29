@@ -177,20 +177,11 @@ void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const ui
 	}
 	work_t * const work = &param->work;
 	// Prepare printing
-//	bool waiting = false;
-//	struct timespec start, stop;
 	pthread_mutex_lock(&work->print_mutex);
 	while(param->work.vcf_n) {
-//		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
-//		waiting = true;
-		pthread_cond_wait(&work->print_cond, &work->print_mutex);
+		pthread_cond_wait(&work->print_cond2, &work->print_mutex);
 	}
 	pthread_mutex_unlock(&work->print_mutex);
-//	if(waiting) {
-//		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
-//		double wait = 1.0e3 * (double)(stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec) * 1e-6;
-//		fprintf(stderr, "call_genotypes A () - waiting for %gms\n", wait);
-//	}
 	if(sz > work->vcf_size) {
 		work->vcf = realloc(work->vcf, sizeof(gt_vcf) * sz);
 		work->vcf_size = sz;
@@ -199,26 +190,17 @@ void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const ui
 	work->vcf_x = x;
 	work->vcf_ctg = ctg;
 	// Check meth profiling has finished before we switch the reference
-//	waiting = false;
 	pthread_mutex_lock(&work->mprof_mutex);
 	while(work->mprof_read_idx != work->mprof_write_idx) {
-//		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
-//		waiting = true;
-		pthread_cond_wait(&work->mprof_cond, &work->mprof_mutex);
+		pthread_cond_wait(&work->mprof_cond2, &work->mprof_mutex);
 	}
 	pthread_mutex_unlock(&work->mprof_mutex);
-//	if(waiting) {
-//		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
-//		double wait = 1.0e3 * (double)(stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec) * 1e-6;
-//		fprintf(stderr, "call_genotypes B () - waiting for %gms\n", wait);
-//	}
-
 	gt_string *tp = work->ref;
 	work->ref = work->ref1;
 	work->ref1 = tp;
 	work->vcf_n = sz;
 	pthread_mutex_lock(&work->print_mutex);
-	pthread_cond_signal(&param->work.print_cond);
+	pthread_cond_signal(&param->work.print_cond1);
 	pthread_mutex_unlock(&work->print_mutex);
 	// Set up calculation threads
 	int nthr = 1 + param->num_threads[CALC_THREADS];

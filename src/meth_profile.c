@@ -61,13 +61,13 @@ void meth_profile(const align_details * const al, const uint32_t x, gt_vector * 
 		const uint8_t *rf = (uint8_t *)(ref_st + pos - x);
 		const uint8_t * const btab = par->work.flt_tab + 256 * al->bs_strand;
 		const int *posx = gt_vector_get_mem(orig_pos[k], int);
-		uint8_t state = (pos > x ? (ref_st[pos - x - 1] << 3) : 0 ) | (*rf++);
+		uint8_t state = (pos > x ? ((ref_st[pos - x - 1] << 3) | (*rf++)) : 0);
 		uint8_t mask = rtab[(int)state];
 		for(uint32_t j = 0; j < rl; j++) {
 			uint8_t xx = btab[(int)(*sp++)];
 			uint64_t * const cts = mc[*posx++].conv_cts;
 			uint8_t mask1 = (xx & mask) >> 1;
-			state = ((state << 3) | (*rf++)) & 63;
+			state = (pos >= x ? (((state << 3) | (*rf++)) & 63) : 0);
 			mask = rtab[(int)state];
 			cts[xx & 3] += (((xx & mask) | mask1) >> 2) & 1;
 		}
