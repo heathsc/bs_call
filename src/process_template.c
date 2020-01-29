@@ -112,23 +112,13 @@ gt_status process_template_vector(gt_vector *align_list, ctg_t * const ctg, uint
 		mp->x = x;
 		mp->max_pos = max_pos;
 		int ix = (work->mprof_write_idx + 1) % N_MPROF_BUFFERS;
-//		bool waiting = false;
-//		struct timespec start, stop;
 		pthread_mutex_lock(&work->mprof_mutex);
 		while(ix == work->mprof_read_idx) {
-//			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
-//			waiting = true;
-			pthread_cond_wait(&work->mprof_cond, &work->mprof_mutex);
+			pthread_cond_wait(&work->mprof_cond2, &work->mprof_mutex);
 		}
-//		int rix = work->mprof_read_idx;
 		work->mprof_write_idx = ix;
-		pthread_cond_signal(&work->mprof_cond);
+		pthread_cond_signal(&work->mprof_cond1);
 		pthread_mutex_unlock(&work->mprof_mutex);
-//		if(waiting) {
-//			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
-//			double wait = 1.0e3 * (double)(stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec) * 1e-6;
-//			fprintf(stderr, "process_template() - waiting for %gms (and setting wid to %d; rix now %d)\n", wait, ix, rix);
-//		}
 	}
 	if (ix) call_genotypes_ML(ctg, align_list, x, y, param);
 	return GT_STATUS_OK;

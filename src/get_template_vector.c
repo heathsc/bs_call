@@ -27,29 +27,19 @@ static void handle_end_of_block(align_hash ** align_hash_p, gt_vector *align_lis
 	}
 	int ix = gt_vector_get_used(align_list);
 	if (ix) {
-//		bool waiting = false;
-//		struct timespec start, stop;
 		pthread_mutex_lock(&work->process_mutex);
 		while(work->align_list_waiting) {
-//			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
-//			waiting = true;
-			pthread_cond_wait(&work->process_cond, &work->process_mutex);
+			pthread_cond_wait(&work->process_cond2, &work->process_mutex);
 		}
 		pthread_mutex_unlock(&work->process_mutex);
-//		if(waiting) {
-//			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
-//			double wait = 1.0e3 * (double)(stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec) * 1e-6;
-//			fprintf(stderr, "end_of_block() waiting for space for %gms\n", wait);
-//		}
 		work->y_waiting = max_pos;
 		int k = work->tid2id[curr_tid];
 		assert(k >= 0);
 		work->ctg_waiting = work->contigs[k];
 		work->align_list_waiting = align_list;
 		work->process_end = true;
-//		fprintf(stderr,"handle_end_of_block() deblocking process cond\n");
 		pthread_mutex_lock(&work->process_mutex);
-		pthread_cond_signal(&work->process_cond);
+		pthread_cond_signal(&work->process_cond1);
 		pthread_mutex_unlock(&work->process_mutex);
 	}
 }
@@ -176,20 +166,11 @@ gt_status read_input(htsFile *sam_input, gt_vector * align_list,sr_param *param)
 				align_details **al_p = gt_vector_get_mem(align_list, align_details *);
 				uint32_t xx = (*al_p)->forward_position;
 				if(xx == 0) xx = (*al_p)->reverse_position;
-//				bool waiting = false;
-//				struct timespec start, stop;
 				pthread_mutex_lock(&param->work.process_mutex);
 				while(param->work.align_list_waiting) {
-//					clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
-//					waiting = true;
-					pthread_cond_wait(&param->work.process_cond, &param->work.process_mutex);
+					pthread_cond_wait(&param->work.process_cond2, &param->work.process_mutex);
 				}
 				pthread_mutex_unlock(&param->work.process_mutex);
-//				if(waiting) {
-//					clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
-//					double wait = 1.0e3 * (double)(stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec) * 1e-6;
-//					fprintf(stderr, "read_line() waiting for space for %gms\n", wait);
-//				}
 
 				// If we are starting a new contig, make sure we use the previous
 				// contig name for the last block!
@@ -201,8 +182,7 @@ gt_status read_input(htsFile *sam_input, gt_vector * align_list,sr_param *param)
 				param->work.free_list_waiting = NULL;
 				param->work.align_list_waiting = align_list;
 				pthread_mutex_lock(&param->work.process_mutex);
-				//fprintf(stderr, "read_line() deblocking process_cond\n)");
-				pthread_cond_signal(&param->work.process_cond);
+				pthread_cond_signal(&param->work.process_cond1);
 				pthread_mutex_unlock(&param->work.process_mutex);
 				if(new_free_list != NULL) {
 					uint32_t used = gt_vector_get_used(free_list);
@@ -313,8 +293,8 @@ gt_status read_input(htsFile *sam_input, gt_vector * align_list,sr_param *param)
 								if((maxq1 < maxq) || (maxq == maxq1 && get_al_qual(al1) < get_al_qual(al))) {
 									align_hash *thash;
 									HASH_FIND(hh, hash_base, gt_string_get_string(tag), gt_string_get_length(tag), thash);
-									gt_cond_fatal_error(thash != NULL, PARSE_SAM_DUPLICATE_SEQUENCE_TAG,PRIgts_content(tag));
-									thash = alh_p[ix];
+									gt_cond_fatal_error(thash && alh_p[ix], PARSE_SAM_DUPLICATE_SEQUENCE_TAG,PRIgts_content(tag));
+									if(!thash) thash = alh_p[ix];
 									al_p[ix] = al;
 									if(thash != NULL) {
 										HASH_DEL(hash_base, thash);
@@ -367,7 +347,7 @@ gt_status read_input(htsFile *sam_input, gt_vector * align_list,sr_param *param)
 						align_details *al1 = al_p[ix];
 						align_hash *thash = alh_p[ix];
 						if(al->forward_position == al1->forward_position && al->reverse_position == al1->reverse_position &&
-								al->bs_strand == al1->bs_strand && ((thash->alignment_flag & 9) == 9 || ((thash->alignment_flag & 9) == 0))) {
+								al->bs_strand == al1->bs_strand && (thash == NULL || ((thash->alignment_flag & 9) == 9 || ((thash->alignment_flag & 9) == 0)))) {
 							if((al1->mapq[0] < al->mapq[0]) || (al1->mapq[0] == al->mapq[0] && get_al_qual(al1)< get_al_qual(al))) {
 								al_p[ix] = al;
 								al = al1;
