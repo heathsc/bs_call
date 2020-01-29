@@ -34,7 +34,6 @@ void init_param(sr_param * const par) {
 	par->all_positions = false;
 	par->benchmark_mode = false;
 	par->work.print_end = par->work.process_end = false;
-	par->work.n_dbSNP_prefixes = 0;
 	par->work.vcf_ctg = NULL;
 	pthread_mutex_init(&par->work.print_mutex, NULL);
 	pthread_cond_init(&par->work.print_cond, NULL);

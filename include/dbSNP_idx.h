@@ -3,7 +3,7 @@
 //  dbSNP
 //
 //  Created by Simon Heath on 15/11/2017.
-//  Copyright © 2017 Simon Heath. All rights reserved.
+//  Copyright 2017 Simon Heath. All rights reserved.
 //
 
 #ifndef dbSNP_idx_h
@@ -19,6 +19,8 @@
 
 #define INITIAL_ENTRY_SIZE 4
 #define INITIAL_NAME_BUF_SIZE 32
+#define ITEMS_PER_BLOCK 2048
+#define IDX_MAGIC 0xd7278434
 
 typedef struct {
    uint64_t mask;
@@ -44,6 +46,5 @@ typedef struct {
   char *pref;
   UT_hash_handle hh;
 } prefix;
-  
-#define INITIAL
+
 #endif /* dbSNP_idx_h */

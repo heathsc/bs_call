@@ -4,6 +4,8 @@
 #include <htslib/vcf.h>
 #include <htslib/faidx.h>
 
+#include "dbSNP.h"
+
 #define BS_CALL_VERSION "2.1.3"
 
 #define STRING_EXP(tok) #tok
@@ -38,21 +40,6 @@
 
 #define GET_QUAL(x) ((x) >> 2)
 #define GET_BASE(x) ((x) & 3)
-
-typedef struct {
-	uint64_t mask;
-	int n_entries;
-	uint16_t *entries;
-	uint8_t *name_buf;
-} dbsnp_bin;
-
-typedef struct {
-	char *name;
-	int min_bin;
-	int max_bin;
-	dbsnp_bin *bins;
-	UT_hash_handle hh;
-} dbsnp_ctg;
 
 typedef enum {stats_all = 0, stats_passed} stats_cat;
 typedef enum {all_sites = 0, variant_sites, CpG_ref_sites, CpG_nonref_sites} qual_cat;
@@ -258,10 +245,12 @@ typedef struct {
 	region_t *curr_region;
 	gt_string *ref;
 	gt_string *ref1;
-	dbsnp_ctg *dbSNP;
-	uint16_t n_dbSNP_prefixes;
-	char **dbSNP_prefix;
-	char *dbSNP_header;
+	dbsnp_header_t *dbSNP_hdr;
+//	dbsnp_ctg *dbSNP;
+//	uint16_t n_dbSNP_prefixes;
+//	size_t dbSNP_bufsize;
+//	char **dbSNP_prefix;
+//	char *dbSNP_header;
 	bs_stats *stats;
 	htsFile *vcf_file;
 	bcf_hdr_t *vcf_hdr;
@@ -339,7 +328,6 @@ void flush_vcf_entries(bcf1_t * bcf, const sr_param * const par);
 void print_vcf_entry(bcf1_t * bcf, ctg_t * const ctg, gt_meth *gtm, const char *rf,
 		const uint32_t x, const uint32_t xstart, bool skip, sr_param * const par);
 void init_param(sr_param * const par);
-void *read_dbSNP_file(void *arg);
 void trim_read(gt_vector * const sqread, int left_trim, int right_trim);
 void trim_soft_clips(align_details * const al, bs_stats * const stats, uint32_t * const trim_left, uint32_t * const trim_right);
 void handle_overlap(align_details * const al, bs_stats * const stats, uint32_t * const trim_left, uint32_t * const trim_right);

@@ -49,7 +49,7 @@ void output_stats(sr_param *par) {
 	fprintf(fp, "\t\t\"SNPS\": {\n\t\t\t\"All\": %" PRIu64 ",\n\t\t\t\"Passed\": %" PRIu64 "\n\t\t},\n", stats->snps[stats_all], stats->snps[stats_passed]);
 	fprintf(fp, "\t\t\"Indels\": {\n\t\t\t\"All\": %" PRIu64 ",\n\t\t\t\"Passed\": %" PRIu64 "\n\t\t},\n", stats->indels[stats_all], stats->indels[stats_passed]);
 	fprintf(fp, "\t\t\"Multiallelic\": {\n\t\t\t\"All\": %" PRIu64 ",\n\t\t\t\"Passed\": %" PRIu64 "\n\t\t},\n", stats->multi[stats_all], stats->multi[stats_passed]);
-	if(par->work.dbSNP != NULL) {
+	if(par->work.dbSNP_hdr != NULL) {
 		fprintf(fp, "\t\t\"dbSNPSites\": {\n\t\t\t\"All\": %" PRIu64 ",\n\t\t\t\"Passed\": %" PRIu64 "\n\t\t},\n", stats->dbSNP_sites[stats_all], stats->dbSNP_sites[stats_passed]);
 		fprintf(fp, "\t\t\"dbSNPVariantSites\": {\n\t\t\t\"All\": %" PRIu64 ",\n\t\t\t\"Passed\": %" PRIu64 "\n\t\t},\n", stats->dbSNP_var[stats_all], stats->dbSNP_var[stats_passed]);
 	}
@@ -287,7 +287,7 @@ void output_stats(sr_param *par) {
 		fprintf(fp, "\t\t\t\"SNPS\": {\n\t\t\t\t\"All\": %" PRIu64 ",\n\t\t\t\t\"Passed\": %" PRIu64 "\n\t\t\t},\n", gs->snps[stats_all], gs->snps[stats_passed]);
 		fprintf(fp, "\t\t\t\"Indels\": {\n\t\t\t\t\"All\": %" PRIu64 ",\n\t\t\t\t\"Passed\": %" PRIu64 "\n\t\t\t},\n", gs->indels[stats_all], gs->indels[stats_passed]);
 		fprintf(fp, "\t\t\t\"Multiallelic\": {\n\t\t\t\t\"All\": %" PRIu64 ",\n\t\t\t\t\"Passed\": %" PRIu64 "\n\t\t\t},\n", gs->multi[stats_all], gs->multi[stats_passed]);
-		if(par->work.dbSNP != NULL) {
+		if(par->work.dbSNP_hdr!= NULL) {
 			fprintf(fp, "\t\t\t\"dbSNPSites\": {\n\t\t\t\t\"All\": %" PRIu64 ",\n\t\t\t\t\"Passed\": %" PRIu64 "\n\t\t\t},\n", gs->dbSNP_sites[stats_all], gs->dbSNP_sites[stats_passed]);
 			fprintf(fp, "\t\t\t\"dbSNPVariantSites\": {\n\t\t\t\t\"All\": %" PRIu64 ",\n\t\t\t\t\"Passed\": %" PRIu64 "\n\t\t\t},\n", gs->dbSNP_var[stats_all], gs->dbSNP_var[stats_passed]);
 		}

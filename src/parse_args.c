@@ -151,9 +151,9 @@ gt_status parse_arguments(int argc, char **argv, sr_param *const par) {
 		}
 	}
 	if (optind < argc) par->input_file = argv[optind];
-	pthread_t dbsnp_thread;
 	if(par->dbSNP_name != NULL) {
-		pthread_create(&dbsnp_thread, NULL, read_dbSNP_file, par);
+		par->work.dbSNP_hdr = load_dbSNP_header(par->dbSNP_name);
+		if(!par->work.dbSNP_hdr) par->dbSNP_name = NULL;
 	}
 	// Sanity
 	if (par->min_qual < 1) par->min_qual = 1;
@@ -221,8 +221,6 @@ gt_status parse_arguments(int argc, char **argv, sr_param *const par) {
 	gt_free(bs_call_getopt);
 	// JSON Stats
 	if(par->report_file != NULL) init_stats(par);
-	// dbSNP file
-	if(par->dbSNP_name != NULL && err == GT_STATUS_OK) pthread_join(dbsnp_thread, 0);
 	return err;
 }
 

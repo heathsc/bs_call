@@ -27,7 +27,7 @@ static void add_flt_counts(gt_vector *v, int ct, bool var) {
 	if(ct >= v->used) v->used = ct + 1;
 }
 
-static dbsnp_ctg *dbSNP_ctg;
+static dbsnp_ctg_t *dbSNP_ctg;
 
 void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *rf_ctxt,
 		const uint32_t x, char *gt_store, const sr_param * const par) {
@@ -98,12 +98,10 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 	static char *iupac = "NAMRWCSYGKT";
 	static int cflag[] = {0, 1, 0, 0, 1, 1, 1, 0, 0, 0};
 	static int gflag[] = {0, 0, 1, 0, 0, 1, 0, 1, 1, 0};
-	static char dtab[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 0, 0, 0, 0, 0, 0 };
 	static ctg_t *old_ctg = NULL;
 	static uint32_t old_x;
 	char rs[512];
 	char prf_ctxt[5];
-	char *db_prefix;
 	static uint32_t prev_cpg_x;
 	static bool prev_cpg_flt;
 	const double * const logp = par->defs.logp;
@@ -131,51 +129,14 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 	if (!dp) return;
 	size_t rs_len = 0;
 	rs[0] = 0;
-	db_prefix = NULL;
-	if(dbSNP_ctg != NULL) {
-		int bn = x >> 6;
-		if(bn >= dbSNP_ctg->min_bin && bn <= dbSNP_ctg->max_bin) {
-			dbsnp_bin *b = dbSNP_ctg->bins + bn - dbSNP_ctg->min_bin;
-			int ix = x & 63;
-			uint32_t mk = (uint32_t)1 << ix;
-			if(b->mask & mk) {
-				uint32_t mk1 = b->mask & (mk - (uint32_t)1);
-				int i = 0, j = 0;
-				while(mk1) {
-					if(mk1 & (uint32_t)1) {
-						uint16_t en = b->entries[i++];
-						j += en >> 8;
-						if(!((en >> 6) & 3)) j += 2;
-					}
-					mk1 >>= 1;
-				}
-				char *tp = rs;
-				int prefix_id = (b->entries[i] >> 6) & 3;
-				unsigned char *tp1 = b->name_buf + j;
-				if((prefix_id--) == 0) {
-					prefix_id = (tp1[0] << 8) | tp1[1];
-					tp1+=2;
-				}
-				db_prefix = par->work.dbSNP_prefix[prefix_id];
-				j = 0;
-				while(db_prefix[j]) *tp++ = db_prefix[j++];
-				j = b->entries[i] >> 8;
-				for(int k = 0; k < j; k++) {
-					unsigned char z = *tp1++;
-					*tp++ = dtab[z >> 4];
-					*tp++ = dtab[z & 15];
-				}
-				*tp = 0;
-				rs_len = tp - rs;
-			}
-		}
-	}
+	bool rs_found = false;
+	if(dbSNP_ctg != NULL) rs_found = dbSNP_lookup_name(par->work.dbSNP_hdr, dbSNP_ctg, rs, &rs_len, x);
 	for(int i = 0; i < 5; i++) prf_ctxt[i] = pbase[(int)rf_ctxt[i]];
 	char rfc = prf_ctxt[2];
 	int rfix = (int)rf_ctxt[2];
 	int gt = gt_store[2] - 1;
 	// Skip homozygous reference if AA or TT
-	bool skip = (!par->all_positions && db_prefix == NULL && gt_flag[gt][rfix]);
+	bool skip = (!par->all_positions && !rs_found && gt_flag[gt][rfix]);
 	double z = gtm->gt_prob[gt];
 	int phred;
 	double z1 = exp(z * LOG10);
@@ -203,7 +164,7 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 		// POS
 		bcf->pos = x - 1;
 		// ID
-		if(db_prefix == NULL) bcf_enc_size(str, 0, BCF_BT_CHAR);
+		if(!rs_found) bcf_enc_size(str, 0, BCF_BT_CHAR);
 		else {
 			bcf_enc_size(str, rs_len, BCF_BT_CHAR);
 			kputsn(rs, rs_len, str);
@@ -462,7 +423,7 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 			add_flt_counts(stats->mq_stats, gtm->mq, gt_het[gt]);
 			stats->filter_counts[gt_het[gt] ? 1 : 0][flt & 31]++;
 			stats->qual[all_sites][phred]++;
-			if(db_prefix != NULL) {
+			if(rs_found) {
 				stats->dbSNP_sites[stats_all]++;
 				ctg_stats->dbSNP_sites[stats_all]++;
 				if(snp || multi) {
@@ -556,7 +517,7 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 			if(mut != mut_no) {
 				stats->mut_counts[mut][stats_all]++;
 				if(!flt) stats->mut_counts[mut][stats_passed]++;
-				if(db_prefix != NULL) { // dbSNP
+				if(rs_found) { // dbSNP
 					stats->dbSNP_mut_counts[mut][stats_all]++;
 					if(!flt) stats->dbSNP_mut_counts[mut][stats_passed]++;
 				}
@@ -590,8 +551,13 @@ void print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *r
 	if (curr_ctg == NULL) {
 		curr_ctg = ctg;
 		const char * const ctgname = ctg->name;
-		if(par->work.dbSNP != NULL) {
-			HASH_FIND(hh, par->work.dbSNP, ctgname, strlen(ctgname), dbSNP_ctg);
+		if(par->work.dbSNP_hdr != NULL) {
+			if(dbSNP_ctg) unload_dbSNP_ctg(dbSNP_ctg);
+			HASH_FIND(hh, par->work.dbSNP_hdr->dbSNP, ctgname, strlen(ctgname), dbSNP_ctg);
+			if(dbSNP_ctg) {
+				bool ret = load_dbSNP_ctg(par->work.dbSNP_hdr, dbSNP_ctg);
+				if(!ret) dbSNP_ctg = NULL;
+			}
 		}
 	}
 	uint32_t l = x - store_x;
@@ -683,7 +649,7 @@ void print_vcf_header(sr_param * const param, bam_hdr_t * hdr) {
 		struct tm *tt = localtime(&cl);
 		bcf_hdr_printf(bh, "##fileDate(dd/mm/yyyy)=%02d/%02d/%04d", tt->tm_mday, tt->tm_mon + 1, tt->tm_year + 1900);
 		bcf_hdr_printf(bh, "##source=bs_call_v%s,under_conversion=%g,over_conversion=%g,mapq_thresh=%d,bq_thresh=%d", BS_CALL_VERSION, param->under_conv, param->over_conv, param->mapq_thresh, param->min_qual);
-		if(param->work.dbSNP_header != NULL) bcf_hdr_printf(bh, "##dbsnp=<%s>", param->work.dbSNP_header);
+		if(param->work.dbSNP_hdr->dbSNP_header != NULL) bcf_hdr_printf(bh, "##dbsnp=<%s>", param->work.dbSNP_hdr->dbSNP_header);
 		// Scan header lines for @RG line (Read Groups)
 		// Keep track of barcodes encountered so we only print one lne per barcode
 		typedef struct {

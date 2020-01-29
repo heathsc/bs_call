@@ -46,6 +46,7 @@ static const uint8_t rtab[64] = {
 // if we have a valid count.
 
 void meth_profile(const align_details * const al, const uint32_t x, gt_vector * const orig_pos[2], const int max_pos, sr_param * const par) {
+	if(!par->work.stats) return;
 	gt_vector *mprof = par->work.stats->meth_profile;
 	const char *ref_st = gt_string_get_string(par->work.ref1);
 	if(max_pos + 1 > mprof->used) {
