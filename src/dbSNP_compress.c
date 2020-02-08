@@ -35,8 +35,8 @@ static void free_compress(void) {
 static void init_compress(void) {
   int i, j;
   char *pnames[][2] = {
-    {"bgzip", NULL}, {"gzip", NULL}, {"bzip2", NULL}, {"xz", NULL}, {"compress", NULL}, {NULL, NULL}};
-  int compress_type[] = {COMPRESS_GZIP, COMPRESS_GZIP, COMPRESS_BZIP2, COMPRESS_XZ, COMPRESS_COMPRESS, COMPRESS_NONE};
+    {"bgzip", NULL}, {"gzip", NULL}, {"lbzip2", NULL}, {"bzip2", NULL}, {"xz", NULL}, {"compress", NULL}, {NULL, NULL}};
+  int compress_type[] = {COMPRESS_GZIP, COMPRESS_GZIP, COMPRESS_BZIP2, COMPRESS_BZIP2, COMPRESS_XZ, COMPRESS_COMPRESS, COMPRESS_NONE};
   char *suff[] = {"gz", "bz2", "xz", "Z"};
   char *path;
 

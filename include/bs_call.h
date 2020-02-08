@@ -282,6 +282,7 @@ typedef struct {
 	char *dbSNP_name;
 	char *report_file;
 	char *contig_bed;
+	char *contig_sizes;
 	bool mmap_input;
 	/* Control flags */
 	bool keep_duplicates;

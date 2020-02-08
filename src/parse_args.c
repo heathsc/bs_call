@@ -96,6 +96,9 @@ gt_status parse_arguments(int argc, char **argv, sr_param *const par) {
 		case 'C':
 			par->contig_bed = optarg;
 			break;
+		case 's':
+			par->contig_sizes = optarg;
+			break;
 		case 'D':
 			par->dbSNP_name = optarg;
 			break;

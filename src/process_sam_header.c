@@ -1,3 +1,4 @@
+
 /*
  * process_sam_header.c
  *
@@ -48,13 +49,62 @@ static ctg_t *new_contig(char * const name) {
 	return ctg;
 }
 
-// Make a common list of contigs that are in the supplied bed file (if present), and in the
+// Make a common list of contigs that are in the supplied bed file (if present), contig_sizes file (if present) and in the
 // sam/bam header and in the reference sequence
+//
+// The logic of what gets included is the follows:
+//
+// (a) If we have neither a contig bed of contig_sizes file then we find the intersect between the contigs that we find in the
+// reference and those in the SAM/BAM header and use this list.  This allows us to get a correspondence for the contig ids between
+// the reference file and the SAM/BAM file. All selected contigs will be processed.
+//
+// (b) If we have a contig bed file but not a contig_sizes file, we do as above, but we only output to the header the contigs
+// that are in the bed file.  Contigs that are present in the contig bed file but not in the reference or SAM/BAM header will be omitted
+// (with a warning).  All selected contigs will be processed.
+//
+// (c) If we have a contig sizes file but not a contig bed file, then the behaviour is essentially the same as in (b) above.
+//
+// (d) If we have both a contig bed file and a contig sizes file, then (1) we check that the contigs in the contig sizes file are a
+// superset of the contigs in the contig bed file, (2) we write all contigs in the contig sizes file to the VCF header and (3) we
+// process only the contigs in the conrig bed file.  This allows us to process different contigs or groups of contigs separately,
+// but keeping the headers of each individual output VCF file the same, which allows us to use the fast -n option to bcftools concat.
+
 bool process_sam_header(sr_param * const par, bam_hdr_t * hdr) {
 	bool err = false;
 
 	ctg_hash *contigs = NULL;
-	// First we store the contigs in the supplied bed file
+	// First we store the contigs in the contig sizes file if present
+	if(par->contig_sizes != NULL) {
+		FILE *cfp = fopen(par->contig_sizes, "r");
+		if(!cfp) fprintf(stderr,"Could not open contig bed file '%s' for input\n", par->contig_sizes);
+		else {
+			char *buf = NULL;
+			size_t buf_size = 0;
+			while(true) {
+				ssize_t l = getline(&buf, &buf_size, cfp);
+				if(l < 0) break;
+				char *p = strchr(buf, '\t');
+				if(p) *p = 0;
+				else continue;
+				size_t sz = strlen(buf);
+				if(sz > 0) {
+					ctg_hash *tp = NULL;
+					HASH_FIND_STR(contigs, buf, tp);
+					if (!tp) {
+						char *cname = gt_malloc(sz + 1);
+						memcpy(cname, buf, sz + 1);
+						tp = new_ctg_hash(new_contig(cname));
+						tp->coords = gt_vector_new(1, sizeof(pair_t));
+						HASH_ADD_KEYPTR(hh, contigs, cname, sz, tp);
+					}
+				}
+			}
+			fclose(cfp);
+			if(buf != NULL) free(buf);
+		}
+	}
+
+	// Then we store the contigs in the supplied bed file
 	if(par->contig_bed != NULL) {
 		FILE *cfp = fopen(par->contig_bed, "r");
 		if(!cfp) fprintf(stderr,"Could not open contig bed file '%s' for input\n", par->contig_bed);
@@ -83,6 +133,10 @@ bool process_sam_header(sr_param * const par, bam_hdr_t * hdr) {
 					ctg_hash *tp = NULL;
 					HASH_FIND_STR(contigs, buf, tp);
 					if (!tp) {
+						if(par->contig_sizes) {
+							fprintf(stderr, "Warning - Region %s:%u-%u not present in file %s and will be ignored\n", buf, x + 1, y, par->contig_sizes);
+							continue;
+						}
 						char *cname = gt_malloc(sz + 1);
 						memcpy(cname, buf, sz + 1);
 						tp = new_ctg_hash(new_contig(cname));
