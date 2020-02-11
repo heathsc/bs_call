@@ -166,7 +166,7 @@ void finish_output(dbsnp_param_t * const par) {
 		wrt2buf(ctg->min_bin, buf);
 		wrt2buf(ctg->max_bin, buf);
 		wrt2buf(ctg->offset, buf);
-		wrt2bufn(ctg->name, 1 + strlen(ctg->name), buf);
+		wrt2bufn(ctg->rname, 1 + strlen(ctg->rname), buf);
 	}
 	compress_buf(cb, par);
 	write_buf(fp, &cb->cblock);
@@ -180,7 +180,6 @@ void finish_output(dbsnp_param_t * const par) {
 	fwrite(&par->max_buf_size, 1, sizeof(uint64_t), fp);
 	uint64_t sz = cb->cblock.len;
 	fwrite(&sz, 1, sizeof(sz), fp);
-	fprintf(stderr, "sz = %lu\n",sz);
 	fclose(fp);
 
 }
@@ -225,7 +224,7 @@ void output_contig(contig *const ctg, dbsnp_param_t *par) {
 		}
 	}
 	pthread_mutex_unlock(&par->param_mut);
-	fprintf(stderr, "Writing output %s\n", ctg->name);
+	fprintf(stderr, "Writing output %s\n", ctg->rname);
 	int n_items = 0;
 	bin *b = ctg->bins;
 	uint32_t curr_bin = ctg->min_bin;

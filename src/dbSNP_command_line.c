@@ -28,6 +28,7 @@ static const char *usage(void) {
 			"   -d, --desc                         Description of dataset\n"
 			"   -t, --type <AUTO, BED, JSON, VCF>  Input file type (default, BED)\n"
 			"   -u, --unsorted-file <FILE>          Input file that has unsorted records from multiple contigs\n"
+			"   -c, --chrom-alias <FILE>           Chromosome name alias file\n"
 			"   -S, --sorted                       Assume input files are sorted by contigs (unless specified with -u command)\n"
 			"   -@, --threads <n>                  Extra threads\n"
 			"\n";
@@ -38,6 +39,7 @@ static struct option loptions[] = {
 		{"desc",required_argument,0,'d'},
 		{"type",required_argument,0,'t'},
 		{"unsorted-file",required_argument,0,'u'},
+		{"chrom-alias",required_argument,0,'c'},
 		{"threads",required_argument,0,'@'},
 		{"sorted",no_argument,0,'S'},
 		{0,0,0,0}
@@ -64,13 +66,16 @@ void add_file(dbsnp_param_t * const par, char * const name, const bool sorted) {
 void handle_command_line(int argc, char *argv[], dbsnp_param_t * const par) {
 	int c;
 	bool sorted = false;
-	while ((c = getopt_long(argc, argv, "o:u:t:d:@:Sh?",loptions,NULL)) >= 0) {
+	while ((c = getopt_long(argc, argv, "o:u:c:t:d:@:Sh?",loptions,NULL)) >= 0) {
 		switch (c) {
 		case 'o':
 			par->output_file = optarg;
 			break;
 		case 'd':
 			par->header = optarg;
+			break;
+		case 'c':
+			par->chrom_alias_file = optarg;
 			break;
 		case 't':
 			if(!strcasecmp(optarg, "BED")) par->input_type = dbsnp_bed;

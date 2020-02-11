@@ -42,7 +42,31 @@ static char dtab[256] =
 		0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf
 };
 
-int add_to_bin(bin * const b, const uint8_t off, char * const name, prefix **ppt, dbsnp_param_t * const par) {
+void check_prefix(prefix **ppt, char *pref, int len, dbsnp_param_t * const par) {
+	prefix *p = *ppt;
+	if(!p || strlen(p->pref) != len || memcmp(p->pref, pref, len)) {
+		pthread_mutex_lock(&par->param_mut);
+		HASH_FIND(hh, par->prefixes, pref, len, p);
+		if(!p) {
+			if(par->n_prefix == 0xffff) {
+				fprintf(stderr, "Too many SNP prefixes found (%d)\n", par->n_prefix);
+				exit(-1);
+			}
+			p = malloc(sizeof(prefix));
+			p->ix = par->n_prefix++;
+			p->pref = malloc((size_t)(len + 1));
+			memcpy(p->pref, pref, len);
+			p->pref[len] = 0;
+			HASH_ADD_KEYPTR(hh, par->prefixes, p->pref, len, p);
+			fprintf(stderr,"Added new prefix %d, '%s'\n", p->ix, p->pref);
+		}
+		*ppt = p;
+		pthread_mutex_unlock(&par->param_mut);
+	}
+}
+
+int add_to_bin(bin * const b, const snp_t * const snp, const int pref_ix, dbsnp_param_t * const par) {
+	const uint8_t off = snp->pos & 63;
 	uint64_t msk = (uint64_t)1 << off;
 	if(b->mask & msk) return 0;
 	b->mask |= msk;
@@ -57,37 +81,11 @@ int add_to_bin(bin * const b, const uint8_t off, char * const name, prefix **ppt
 		if(b->entry_size > 64) b->entry_size = 64;
 		b->entry = realloc(b->entry, sizeof(uint16_t) * b->entry_size * 2);
 	}
-	size_t l = strlen(name);
-	size_t k = l;
-	prefix *p = *ppt;
-	for(; k > 0; k--) if(name[k - 1] < '0' || name[k-1] > '9') break;
-	if(!p || strlen(p->pref) != k || memcmp(p->pref, name, k)) {
-		pthread_mutex_lock(&par->param_mut);
-		HASH_FIND(hh, par->prefixes, name, k, p);
-		if(!p) {
-			if(par->n_prefix == 0xffff) {
-				fprintf(stderr, "Too many SNP prefixes found (%d)\n", par->n_prefix);
-				exit(-1);
-			}
-			p = malloc(sizeof(prefix));
-			p->ix = par->n_prefix++;
-			p->pref = malloc((size_t)(k+1));
-			memcpy(p->pref, name, k);
-			p->pref[k] = 0;
-			HASH_ADD_KEYPTR(hh, par->prefixes, p->pref, k, p);
-			fprintf(stderr,"Added new prefix %d, '%s'\n", p->ix, p->pref);
-		}
-		*ppt = p;
-		pthread_mutex_unlock(&par->param_mut);
-	}
-	const char * const snp = name + k;
-	l -= k;
-
-	if(l > 510) {
-		fprintf(stderr,"%s:%d %s() Marker name exceeds 510 characters: %s\n", __FILE__, __LINE__, __func__, name);
+	if(snp->name_len > 510) {
+		fprintf(stderr,"%s:%d %s() Marker name exceeds 510 characters: %s\n", __FILE__, __LINE__, __func__, snp->name);
 		exit(-1);
 	}
-	uint16_t l1 = (uint16_t)(l + 1) >> 1;
+	uint16_t l1 = (uint16_t)(snp->name_len + 1) >> 1;
 	uint16_t sz = b->name_buf_idx;
 	if(sz + l1 > b->name_buf_size) {
 		b->name_buf_size = (b->name_buf_size + l1) * 1.25;
@@ -95,9 +93,9 @@ int add_to_bin(bin * const b, const uint8_t off, char * const name, prefix **ppt
 	}
 	int x = (b->n_entries++) << 1;
 	b->entry[x] = (l1 << 8) | off;
-	b->entry[x + 1] = p->ix;
-	for(size_t i = 0; i < l; i += 2) {
-		b->name_buf[b->name_buf_idx++] = (dtab[(int)snp[i]] << 4) | dtab[(int)snp[i + 1]];
+	b->entry[x + 1] = pref_ix;
+	for(size_t i = 0; i < snp->name_len; i += 2) {
+		b->name_buf[b->name_buf_idx++] = (dtab[(int)snp->name[i]] << 4) | dtab[(int)snp->name[i + 1]];
 	}
 	return 1;
 }

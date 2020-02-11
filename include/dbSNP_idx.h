@@ -55,6 +55,8 @@ typedef struct {
 typedef struct _contig {
 	struct _contig *next;
 	char *name;
+	char *rname;
+	int name_len;
 	bin *bins;
 	uint32_t min_bin;
 	uint32_t max_bin;
@@ -71,6 +73,12 @@ typedef struct {
 	UT_hash_handle hh;
 } prefix;
 
+typedef struct {
+	char *name;
+	char *alias;
+	UT_hash_handle hh;
+} chrom_alias_t;
+
 typedef enum { dbsnp_auto, dbsnp_bed, dbsnp_json, dbsnp_vcf } dbsnp_input_type_t;
 typedef enum { block_empty, block_uncompressed, block_active, block_compressed } block_state_t;
 
@@ -83,7 +91,17 @@ typedef struct {
 } comp_block_t;
 
 typedef struct {
+	char *name;
+	char *cname;
+	uint32_t pos;
+	int name_len;
+	int cname_len;
+	bool ok;
+} snp_t;
+
+typedef struct {
 	char *output_file;
+	char *chrom_alias_file;
 	FILE *outfile;
 	int threads;
 	int read_jobs;
@@ -92,6 +110,7 @@ typedef struct {
 	char *header;
 	contig *contigs;
 	contig *contig_queue;
+	chrom_alias_t *aliases;
 	prefix *prefixes;
 	file_t *sorted;
 	file_t *unsorted;
@@ -123,8 +142,9 @@ void *input_thread(void *pt);
 void *output_thread(void *pt);
 void *compress_thread(void *pt);
 void *write_thread(void *pt);
-int add_to_bin(bin * const b, const uint8_t off, char * const name, prefix **ppt, dbsnp_param_t * const par);
+int add_to_bin(bin * const b, const snp_t * const snp, const int pref_ix, dbsnp_param_t * const par);
 void clear_bins(bin *b, int ct);
+void check_prefix(prefix **ppt, char *pref, int len, dbsnp_param_t * const par);
 void add_remaining_contigs_to_queue(dbsnp_param_t * const par);
 void free_used_files(dbsnp_param_t * const par);
 void init_buffer(buffer_t * const buf, size_t sz);
@@ -132,6 +152,8 @@ buffer_t *new_buffer(size_t sz);
 void destroy_buffer(buffer_t * const buf);
 void resize_buffer(buffer_t * const buf, size_t sz);
 void swap_buffers(buffer_t * const buf1, buffer_t * const buf2);
+void read_alias_file(dbsnp_param_t * const par);
+char *check_alias(snp_t * const snp, dbsnp_param_t * const par);
 
 #define reserve_buffer(buf, x) resize_buffer(buf, (buf)->len + x)
 #define clear_buffer(buf) (buf)->len = 0

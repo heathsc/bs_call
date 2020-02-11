@@ -9,6 +9,7 @@
 #include "dbSNP_utils.h"
 #include <sys/types.h>
 #include <sys/wait.h>
+#include "../include/dbSNP_json.h"
 
 static file_t *next_file(dbsnp_param_t * const par) {
 	if(par->abort_flag) return NULL;
@@ -49,11 +50,15 @@ static void set_header(dbsnp_param_t * const par, const char * const hd) {
 	pthread_mutex_unlock(&par->param_mut);
 }
 
-static contig *new_contig(const char * const name, file_t * const file, const uint32_t binx) {
+static contig *new_contig(const snp_t * const snp, char * const rname,  file_t * const file, const uint32_t binx) {
 	contig * const ctg = malloc(sizeof(contig));
 	ctg->min_bin = ctg->max_bin = binx;
 	ctg->bins = malloc(sizeof(bin));
-	ctg->name = strdup(name);
+	ctg->name = malloc(snp->name_len + 1);
+	ctg->name_len = snp->cname_len;
+	memcpy(ctg->name, snp->cname, ctg->name_len);
+	ctg->name[ctg->name_len] = 0;
+	ctg->rname = rname ? rname : ctg->name;
 	ctg->first_file = file;
 	ctg->in_queue = false;
 	pthread_mutex_init(&ctg->mut, NULL);
@@ -61,19 +66,19 @@ static contig *new_contig(const char * const name, file_t * const file, const ui
 	return ctg;
 }
 
-static contig * find_or_create_contig(dbsnp_param_t * const par, const char * const name, file_t * const file, const uint32_t binx) {
+static contig * find_or_create_contig(dbsnp_param_t * const par, const snp_t * const snp, char * const rname, file_t * const file, const uint32_t binx) {
 	contig *ctg;
 	pthread_mutex_lock(&par->param_mut);
-	HASH_FIND_STR(par->contigs, name, ctg);
+	HASH_FIND(hh, par->contigs, snp->cname, snp->cname_len, ctg);
 	if(!ctg) {
-		ctg = new_contig(name, file, binx);
-		HASH_ADD_KEYPTR(hh, par->contigs, ctg->name, strlen(ctg->name), ctg);
+		ctg = new_contig(snp, rname, file, binx);
+		HASH_ADD_KEYPTR(hh, par->contigs, ctg->name, ctg->name_len, ctg);
 	} else if(!par->unsorted_flag) {
-		if(file == ctg->first_file) fprintf(stderr, "Contig %s found in multiple places in input '%s' - verify usage of --sorted option\n", ctg->name, file->name);
+		if(file == ctg->first_file) fprintf(stderr, "Contig %s found in multiple places in input '%s' - verify usage of --sorted option\n", ctg->rname, file->name);
 		else {
 			file_t *file1= ctg->first_file;
 			if(file1->sorted || !file1->read) {
-				fprintf(stderr, "Contig %s found in multiple files ('%s' and '%s') - verify usage of --sorted option\n", ctg->name, file->name, ctg->first_file->name);
+				fprintf(stderr, "Contig %s found in multiple files ('%s' and '%s') - verify usage of --sorted option\n", ctg->rname, file->name, ctg->first_file->name);
 				ctg = NULL;
 			} else ctg->first_file = file;
 		}
@@ -81,6 +86,7 @@ static contig * find_or_create_contig(dbsnp_param_t * const par, const char * co
 	pthread_mutex_unlock(&par->param_mut);
 	return ctg;
 }
+
 static void add_contig_to_queue(dbsnp_param_t * const par, contig * const ctg) {
 	if(!par->unsorted_flag) {
 		pthread_mutex_lock(&par->contig_queue_mut);
@@ -98,6 +104,34 @@ void add_remaining_contigs_to_queue(dbsnp_param_t * const par) {
 	}
 }
 
+dbsnp_input_type_t guess_input_type(char * const buf) {
+	dbsnp_input_type_t itype = dbsnp_bed;
+	if(buf[0] == '{') itype = dbsnp_json;
+	return itype;
+}
+
+static tokens *parse_bed_line(char * const buf, const ssize_t l, tokens *tok, snp_t * const snp, dbsnp_param_t * const par) {
+	if(l > 6 && !strncmp(buf, "track ", 6)) {
+		if(par->header == NULL) set_header(par, buf);
+	} else {
+		tok = tokenize(buf, '\t', tok);
+		if(tok->n_tok > 4) {
+			char *p;
+			uint32_t x = (uint32_t)strtoul(tok->toks[1], &p, 10);
+			uint32_t y = (uint32_t)strtoul(tok->toks[2], &p, 10);
+			if(y > x && y - x == 1) {
+				snp->pos = y;
+				snp->cname = tok->toks[0];
+				snp->cname_len = tok->toks[1] - tok->toks[0] - 1;
+				snp->name = tok->toks[3];
+				snp->name_len = tok->toks[4] - tok->toks[3] - 1;
+				snp->ok = true;
+			}
+		}
+	}
+	return tok;
+}
+
 void *input_thread(void *pt) {
 	dbsnp_param_t * const par = pt;
 	bool *st = malloc(sizeof(bool));
@@ -107,12 +141,19 @@ void *input_thread(void *pt) {
 	tokens *tok = NULL;
 	contig *ctg = NULL;
 	prefix *pref = NULL;
+	jsmn_work_t jwork = {
+			.keys = NULL,
+			.tcount = 0,
+			.tok = NULL
+	};
 	uint64_t n_snps = 0;
 	while(!*st) {
 		file_t * const file = next_file(par);
 		if(!file) break;
 		FILE *fin = file->fp;
 		fprintf(stderr, "Reading from %s\n", fin != stdin ? file->name : "<stdin>");
+		dbsnp_input_type_t itype = par->input_type;
+		snp_t snp;
 		while(!*st) {
 			if(par->abort_flag) {
 				*st = true;
@@ -122,39 +163,63 @@ void *input_thread(void *pt) {
 			if(l < 0) break;
 			if(l > 0 && buf[l - 1] == '\n') buf[--l] = 0;
 			if(l > 0) {
-				if(l > 6 && !strncmp(buf, "track ", 6)) {
-					if(par->header == NULL) set_header(par, buf);
-				} else {
-					tok = tokenize(buf, '\t', tok);
-					if(tok->n_tok >= 4) {
-						char *p;
-						uint32_t x = (uint32_t)strtoul(tok->toks[1], &p, 10);
-						uint32_t y = (uint32_t)strtoul(tok->toks[2], &p, 10);
-						if(y > x && y - x == 1) {
-							uint32_t binx = y >> 6;
-							if(ctg == NULL || strcmp(ctg->name, tok->toks[0])) {
-								if(ctg) add_contig_to_queue(par, ctg);
-								ctg = find_or_create_contig(par, tok->toks[0], file, binx);
-								if(!ctg) {
-									*st = true;
-									par->abort_flag = true;
-									break;
-								}
-							}
-							pthread_mutex_lock(&ctg->mut);
-							if(binx > ctg->max_bin) {
-								ctg->bins = realloc(ctg->bins, sizeof(bin) * (size_t)(binx - ctg->min_bin + 1));
-								clear_bins(ctg->bins + (ctg->max_bin - ctg->min_bin + 1), binx - ctg->max_bin);
-								ctg->max_bin = binx;
-							} else if(binx < ctg->min_bin) {
-								ctg->bins = realloc(ctg->bins, sizeof(bin) * (size_t)(ctg->max_bin - binx + 1));
-								memmove(ctg->bins + (ctg->min_bin - binx), ctg->bins, sizeof(bin) * (size_t)(ctg->max_bin - ctg->min_bin + 1));
-								clear_bins(ctg->bins, ctg->min_bin - binx);
-								ctg->min_bin = binx;
-							}
-							n_snps += add_to_bin(ctg->bins + (binx - ctg->min_bin), y & 63, tok->toks[3], &pref, par);
-							pthread_mutex_unlock(&ctg->mut);
+				if(itype == dbsnp_auto) {
+					itype = guess_input_type(buf);
+					if(itype == dbsnp_json) check_prefix(&pref, "rs", 2, par);
+				}
+				snp.ok = false;
+				switch(itype) {
+				case dbsnp_json:
+					parse_json_line(buf, l, &jwork, &snp, par);
+					break;
+				case dbsnp_bed:
+					tok = parse_bed_line(buf, l, tok, &snp, par);
+					if(snp.ok) {
+						int k = snp.name_len;
+						for(; k > 0; k--) if(snp.name[k - 1] < '0' || snp.name[k-1] > '9') break;
+						check_prefix(&pref, snp.name, k, par);
+						snp.name += k;
+					}
+					break;
+				default:
+					fprintf(stderr, "Input type nor currently handled\n");
+					*st = true;
+					par->abort_flag = true;
+					break;
+				}
+				if(*st) break;
+				if(snp.ok) {
+					uint32_t binx = snp.pos >> 6;
+					if(ctg == NULL || ctg->name_len != snp.cname_len || memcmp(ctg->name, snp.cname, snp.cname_len)) {
+						char *rname = NULL;
+						if(par->aliases) {
+							rname = check_alias(&snp, par);
+							if(!rname) snp.ok = false;
 						}
+						if(snp.ok) {
+							if(ctg) add_contig_to_queue(par, ctg);
+							ctg = find_or_create_contig(par, &snp, rname, file, binx);
+							if(!ctg) {
+								*st = true;
+								par->abort_flag = true;
+								break;
+							}
+						}
+					}
+					if(snp.ok) {
+						pthread_mutex_lock(&ctg->mut);
+						if(binx > ctg->max_bin) {
+							ctg->bins = realloc(ctg->bins, sizeof(bin) * (size_t)(binx - ctg->min_bin + 1));
+							clear_bins(ctg->bins + (ctg->max_bin - ctg->min_bin + 1), binx - ctg->max_bin);
+							ctg->max_bin = binx;
+						} else if(binx < ctg->min_bin) {
+							ctg->bins = realloc(ctg->bins, sizeof(bin) * (size_t)(ctg->max_bin - binx + 1));
+							memmove(ctg->bins + (ctg->min_bin - binx), ctg->bins, sizeof(bin) * (size_t)(ctg->max_bin - ctg->min_bin + 1));
+							clear_bins(ctg->bins, ctg->min_bin - binx);
+							ctg->min_bin = binx;
+						}
+						n_snps += add_to_bin(ctg->bins + (binx - ctg->min_bin), &snp, pref->ix, par);
+						pthread_mutex_unlock(&ctg->mut);
 					}
 				}
 			}

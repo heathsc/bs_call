@@ -21,6 +21,7 @@ int main(int argc, char *argv[]) {
 			.header = NULL,
 			.contigs = NULL,
 			.contig_queue = NULL,
+			.aliases = NULL,
 			.prefixes = NULL,
 			.n_prefix = 0,
 			.n_snps = 0,
@@ -42,6 +43,7 @@ int main(int argc, char *argv[]) {
 	};
 	par.output_buf = new_buffer(4096);
 	handle_command_line(argc, argv, &par);
+	if(par.chrom_alias_file) read_alias_file(&par);
 	bool st = open_outfile(&par);
 	if(!st) {
 		const int nt = par.threads = par.threads > 0 ? par.threads : 1;
