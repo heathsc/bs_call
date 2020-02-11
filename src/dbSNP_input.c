@@ -9,6 +9,7 @@
 #include "dbSNP_utils.h"
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <ctype.h>
 #include "../include/dbSNP_json.h"
 
 static file_t *next_file(dbsnp_param_t * const par) {
@@ -104,9 +105,10 @@ void add_remaining_contigs_to_queue(dbsnp_param_t * const par) {
 	}
 }
 
-dbsnp_input_type_t guess_input_type(char * const buf) {
+dbsnp_input_type_t guess_input_type(char * const buf, const ssize_t l) {
 	dbsnp_input_type_t itype = dbsnp_bed;
 	if(buf[0] == '{') itype = dbsnp_json;
+	else if(l >= 16 && !strncmp(buf, "##fileformat=VCF",16)) itype = dbsnp_vcf;
 	return itype;
 }
 
@@ -130,6 +132,29 @@ static tokens *parse_bed_line(char * const buf, const ssize_t l, tokens *tok, sn
 		}
 	}
 	return tok;
+}
+
+static tokens *parse_vcf_line(char * const buf, const ssize_t l, tokens *tok, snp_t * const snp, dbsnp_param_t * const par) {
+	if(buf[0] != '#') {
+		tok = tokenize(buf, '\t', tok);
+		if(tok->n_tok > 4 && tok->toks[3][1] == 0 && tok->toks[4][1] == 0) {
+			char *p;
+			snp->pos = (uint32_t)strtoul(tok->toks[1], &p, 10);
+			snp->cname = tok->toks[0];
+			snp->cname_len = tok->toks[1] - tok->toks[0] - 1;
+			snp->name = tok->toks[2];
+			snp->name_len = tok->toks[3] - tok->toks[2] - 1;
+			snp->ok = true;
+		}
+	}
+	return tok;
+}
+
+static void adjust_name(snp_t * const snp, prefix **pref, dbsnp_param_t * const par) {
+	int k = snp->name_len;
+	for(; k > 0; k--) if(!isdigit((int)snp->name[k - 1])) break;
+	check_prefix(pref, snp->name, k, par);
+	snp->name += k;
 }
 
 void *input_thread(void *pt) {
@@ -164,7 +189,7 @@ void *input_thread(void *pt) {
 			if(l > 0 && buf[l - 1] == '\n') buf[--l] = 0;
 			if(l > 0) {
 				if(itype == dbsnp_auto) {
-					itype = guess_input_type(buf);
+					itype = guess_input_type(buf, l);
 					if(itype == dbsnp_json) check_prefix(&pref, "rs", 2, par);
 				}
 				snp.ok = false;
@@ -174,12 +199,11 @@ void *input_thread(void *pt) {
 					break;
 				case dbsnp_bed:
 					tok = parse_bed_line(buf, l, tok, &snp, par);
-					if(snp.ok) {
-						int k = snp.name_len;
-						for(; k > 0; k--) if(snp.name[k - 1] < '0' || snp.name[k-1] > '9') break;
-						check_prefix(&pref, snp.name, k, par);
-						snp.name += k;
-					}
+					if(snp.ok) adjust_name(&snp, &pref, par);
+					break;
+				case dbsnp_vcf:
+					tok = parse_vcf_line(buf, l, tok, &snp, par);
+					if(snp.ok) adjust_name(&snp, &pref, par);
 					break;
 				default:
 					fprintf(stderr, "Input type nor currently handled\n");
