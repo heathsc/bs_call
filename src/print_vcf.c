@@ -649,7 +649,7 @@ void print_vcf_header(sr_param * const param, bam_hdr_t * hdr) {
 		struct tm *tt = localtime(&cl);
 		bcf_hdr_printf(bh, "##fileDate(dd/mm/yyyy)=%02d/%02d/%04d", tt->tm_mday, tt->tm_mon + 1, tt->tm_year + 1900);
 		bcf_hdr_printf(bh, "##source=bs_call_v%s,under_conversion=%g,over_conversion=%g,mapq_thresh=%d,bq_thresh=%d", BS_CALL_VERSION, param->under_conv, param->over_conv, param->mapq_thresh, param->min_qual);
-		if(param->work.dbSNP_hdr->dbSNP_header != NULL) bcf_hdr_printf(bh, "##dbsnp=<%s>", param->work.dbSNP_hdr->dbSNP_header);
+		if(param->work.dbSNP_hdr != NULL && param->work.dbSNP_hdr->dbSNP_header != NULL) bcf_hdr_printf(bh, "##dbsnp=<%s>", param->work.dbSNP_hdr->dbSNP_header);
 		// Scan header lines for @RG line (Read Groups)
 		// Keep track of barcodes encountered so we only print one lne per barcode
 		typedef struct {
