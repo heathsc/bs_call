@@ -44,9 +44,6 @@ static int cmp_bin_entries(const void *s1, const void *s2, void *pt) {
 #define write_buf(f, buf) fwrite((buf)->mem, 1, (buf)->len, f)
 #define wrt2buf(a, buf) wrt2bufn(&a, sizeof(a), buf)
 
-// static void *comp_buf;
-// static size_t comp_buf_size, max_buf_size;
-
 static void compress_buf(comp_block_t * const cb, dbsnp_param_t * const par) {
 	buffer_t * const buf = &cb->ublock;
 	buffer_t * const cbuf = &cb->cblock;
@@ -205,8 +202,6 @@ static void add_to_compress_queue(buffer_t *buf, dbsnp_param_t * const par, uint
 void output_contig(contig *const ctg, dbsnp_param_t *par) {
 	int idx[64];
 	uint16_t start_ix[64];
-	const uint8_t zerob = 0;
-	const uint8_t oneb = 1;
 
 	buffer_t *buf = par->output_buf;
 	static prefix **pref_list = NULL;
@@ -236,6 +231,7 @@ void output_contig(contig *const ctg, dbsnp_param_t *par) {
 		int ne = b->n_entries;
 		if(!ne) continue;
 		tn += ne;
+		// Write out distance from previous bin to new bin
 		uint32_t k = i - curr_bin;
 		uint8_t x = 0;
 		if(k < 64) {
@@ -266,9 +262,15 @@ void output_contig(contig *const ctg, dbsnp_param_t *par) {
 			start_ix[j] = x2;
 			x2 += b->entry[j << 1] >> 8;
 		}
+		// Write out entries in bin
+		uint8_t terminator = 0;
 		for(int j = 0; j < ne; j++) {
-			if(j) wrt2buf(zerob, buf);
+			if(j) wrt2buf(terminator, buf);
 			int j1 = idx[j];
+			if(b->fq_mask & (1l << j1)) {
+				terminator = 2;
+				par->n_snps_maf_filtered++;
+			} else terminator = 0;
 			uint16_t z = b->entry[j1 << 1];
 			int l = z >> 8;
 			uint16_t ix = pref_list[(int)b->entry[(j1 << 1) + 1]]->ix;
@@ -279,7 +281,8 @@ void output_contig(contig *const ctg, dbsnp_param_t *par) {
 			unsigned char *np = b->name_buf + start_ix[j1];
 			for(int k = 0; k < l; k++) wrt2bufn(&dtab2[np[k]], 1, buf);
 		}
-		wrt2buf(oneb, buf);
+		terminator |= 1;
+		wrt2buf(terminator, buf);
 		if(++n_items == ITEMS_PER_BLOCK) {
 			add_to_compress_queue(buf, par, fg, off_ptr);
 			off_ptr = NULL;

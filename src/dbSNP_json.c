@@ -12,7 +12,8 @@
 
 typedef enum {
 	refsnp_id, primary_snapshot_data, placements_with_allele, is_ptlp, alleles,
-	allele, spdi, inserted_sequence, deleted_sequence, position, seq_id
+	allele, spdi, inserted_sequence, deleted_sequence, position, seq_id,
+	allele_annotations, frequency, study_name, allele_count, total_count, observation
 } keys_t;
 
 #define IN_PRIMARY_SNAPSHOT_DATA 1
@@ -20,9 +21,21 @@ typedef enum {
 #define IN_ALLELES 4
 #define IN_ALLELE 8
 #define IN_SPDI 0x10
-#define IS_PTLP 0x20
-#define HAS_POSITION 0x40
-#define VALID_SNP 0x80
+#define IN_ALLELE_ANNOTATIONS 0x20
+#define IN_FREQUENCY 0x40
+#define IN_OBSERVATION 0x80
+#define IS_PTLP 0x100
+#define HAS_POSITION 0x200
+#define FREQ_ALLELES_OK 0x400
+#define VALID_SNP 0x800
+#define SEEN_FREQ_INSERTED_SEQUENCE 0x1000
+#define SEEN_FREQ_DELETED_SEQUENCE 0x2000
+#define SEEN_ALLELE_COUNT 0x4000
+#define SEEN_TOTAL_COUNT 0x8000
+#define STUDY_NAME_OK 0x10000
+
+#define FREQ_ALLELE_FLAGS (SEEN_FREQ_INSERTED_SEQUENCE | SEEN_FREQ_DELETED_SEQUENCE)
+#define FREQ_FLAGS (FREQ_ALLELES_OK | SEEN_ALLELE_COUNT | SEEN_TOTAL_COUNT | STUDY_NAME_OK)
 
 typedef struct {
 	keys_t val;
@@ -33,7 +46,11 @@ typedef struct {
 typedef struct {
 	snp_t *snp;
 	key_hash_t *h;
-	uint16_t mask;
+	uint32_t allele_count;
+	uint32_t total_count;
+	uint32_t a;
+	uint32_t b;
+	uint32_t mask;
 	char inserted_sequence;
 	char deleted_sequence;
 	char alleles[2];
@@ -59,6 +76,12 @@ static void init_jsmn_work(jsmn_work_t * const work) {
 			"deleted_sequence",
 			"position",
 			"seq_id",
+			"allele_annotations",
+			"frequency",
+			"study_name",
+			"allele_count",
+			"total_count",
+			"observation",
 			NULL
 			};
 
@@ -66,7 +89,8 @@ static void init_jsmn_work(jsmn_work_t * const work) {
 	int ct = 0;
 	keys_t vals[] = {
 			refsnp_id, primary_snapshot_data, placements_with_allele, is_ptlp, alleles,
-			allele, spdi, inserted_sequence, deleted_sequence, position, seq_id
+			allele, spdi, inserted_sequence, deleted_sequence, position, seq_id,
+			allele_annotations, frequency, study_name, allele_count, total_count, observation
 	};
 	while(keywords[ct]) {
 		key_hash_t *key;
@@ -118,9 +142,17 @@ static int handle_json(char * const js, jsmntok_t * const tok, int count, snp_ex
 						j++;
 						j += handle_json(js, tok + j + 1, count - j, snp, level + 1);
 						snp->mask &= ~IN_PRIMARY_SNAPSHOT_DATA;
+						if(snp->inserted_sequence && snp->deleted_sequence && snp->inserted_sequence != snp->deleted_sequence && (snp->mask & HAS_POSITION)) {
+							snp->mask |= VALID_SNP;
+							if(snp->total_count > 0) {
+								double z = (double)snp->allele_count / (double)snp->total_count;
+								if(z > 0.5) z = 1.0 - z;
+								snp->snp->maf = z;
+							}
+						}
 						child_processed = true;
 					}
-				break;
+					break;
 				case placements_with_allele:
 					if(level == 1 && ntok[1].type == JSMN_ARRAY && (snp->mask & IN_PRIMARY_SNAPSHOT_DATA)) {
 						snp->mask |= IN_PLACEMENTS_WITH_ALLELE;
@@ -129,7 +161,16 @@ static int handle_json(char * const js, jsmntok_t * const tok, int count, snp_ex
 						snp->mask &= ~IN_PLACEMENTS_WITH_ALLELE; // Clear all allele flags
 						child_processed = true;
 					}
-				break;
+					break;
+				case allele_annotations:
+					if(level == 1 && ntok[1].type == JSMN_ARRAY && (snp->mask & IN_PRIMARY_SNAPSHOT_DATA)) {
+						snp->mask |= IN_ALLELE_ANNOTATIONS;
+						j++;
+						j += handle_json(js, tok + j + 1, count - j, snp, level + 1);
+						snp->mask &= ~IN_ALLELE_ANNOTATIONS; // Clear all allele flags
+						child_processed = true;
+					}
+					break;
 				case is_ptlp:
 					if(level == 3 && ntok[1].type == JSMN_PRIMITIVE && (snp->mask & IN_PLACEMENTS_WITH_ALLELE)) {
 						if(js[ntok[1].start] == 't') snp->mask |= IS_PTLP;
@@ -138,35 +179,61 @@ static int handle_json(char * const js, jsmntok_t * const tok, int count, snp_ex
 						child_processed = true;
 					}
 					break;
+				case frequency:
+					if(level == 3 && ntok[1].type == JSMN_ARRAY && (snp->mask & IN_ALLELE_ANNOTATIONS)) {
+						snp->mask = (snp->mask & ~FREQ_FLAGS) | IN_FREQUENCY;
+						j += 2;
+						for(int i1 = 0; i1 < ntok[1].size; i1++) {
+							j += handle_json(js, tok + j + 1, count - j, snp, level + 2);
+							if((snp->mask & FREQ_FLAGS) == FREQ_FLAGS && snp->a <= snp->b) {
+								snp->allele_count += snp->a;
+								snp->total_count += snp->b;
+							}
+							snp->mask &= ~FREQ_FLAGS;
+						}
+						snp->mask &= ~IN_FREQUENCY;
+						child_processed = true;
+					}
+					break;
 				case alleles:
-					if(level == 3 && ntok[1].type == JSMN_ARRAY && (snp->mask & IS_PTLP)) {
+					if(level == 3 && ntok[1].type == JSMN_ARRAY && ((snp->mask & (IN_PLACEMENTS_WITH_ALLELE | IS_PTLP)) == (IN_PLACEMENTS_WITH_ALLELE | IS_PTLP))) {
 						snp->mask |= IN_ALLELES;
 						j++;
 						j += handle_json(js, tok + j + 1, count - j, snp, level + 1);
-						snp->mask &= ~IN_ALLELES; // Clear all allele flags
+						snp->mask &= ~IN_ALLELES;
 						child_processed = true;
 					}
-				break;
+					break;
 				case allele:
 					if(level == 5 && ntok[1].type == JSMN_OBJECT && (snp->mask & IN_ALLELES)) {
 						snp->mask |= IN_ALLELE;
 						snp->inserted_sequence = snp->deleted_sequence = 0;
 						uint32_t old_pos = snp->snp->pos;
-						uint16_t snp_mask = snp->mask & (HAS_POSITION | VALID_SNP);
+						uint16_t snp_mask = snp->mask & HAS_POSITION;
 						j++;
 						j += handle_json(js, tok + j + 1, count - j, snp, level + 1);
 						if(snp->inserted_sequence && snp->deleted_sequence && snp->inserted_sequence != snp->deleted_sequence && (snp->mask & HAS_POSITION)) {
-							snp->mask |= VALID_SNP;
+							//							snp->mask |= VALID_SNP;
 							snp->alleles[0] = snp->deleted_sequence;
 							snp->alleles[1] = snp->inserted_sequence;
 						} else {
 							snp->snp->pos = old_pos;
-							snp->mask = (snp->mask & ~(HAS_POSITION | VALID_SNP)) | snp_mask;
+							snp->mask = (snp->mask & ~(HAS_POSITION)) | snp_mask;
 						}
 						snp->mask &= ~IN_ALLELE; // Clear all allele flags
 						child_processed = true;
 					}
-				break;
+					break;
+				case observation:
+					if(level == 5 && ntok[1].type == JSMN_OBJECT && (snp->mask & IN_FREQUENCY)) {
+						snp->mask = (snp->mask & ~FREQ_ALLELE_FLAGS) | (IN_OBSERVATION | FREQ_ALLELES_OK);
+						j++;
+						j += handle_json(js, tok + j + 1, count - j, snp, level + 1);
+						if((snp->mask & (FREQ_ALLELE_FLAGS | FREQ_ALLELES_OK)) != (FREQ_ALLELE_FLAGS | FREQ_ALLELES_OK)) snp->mask &= ~(FREQ_ALLELE_FLAGS | FREQ_ALLELES_OK);
+						else snp->mask &= ~FREQ_ALLELE_FLAGS;
+						child_processed = true;
+					}
+					break;
 				case spdi:
 					if(level == 6 && ntok[1].type == JSMN_OBJECT && (snp->mask & IN_ALLELE)) {
 						snp->mask |= IN_SPDI;
@@ -175,9 +242,8 @@ static int handle_json(char * const js, jsmntok_t * const tok, int count, snp_ex
 						snp->mask &= ~IN_SPDI; // Clear all allele flags
 						child_processed = true;
 					}
-				break;
+					break;
 				case position:
-					//					fprintf(stderr, "level: %d, type: %d, mask: %x\n", level, ntok[1].type, snp->mask);
 					if(level == 7 && ntok[1].type == JSMN_PRIMITIVE && (snp->mask & IN_SPDI)) {
 						char *tp = js + ntok[1].start;
 						if(isdigit((int)*tp)) {
@@ -190,7 +256,7 @@ static int handle_json(char * const js, jsmntok_t * const tok, int count, snp_ex
 						j += 2;
 						child_processed = true;
 					}
-				break;
+					break;
 				case seq_id:
 					if(level == 7 && ntok[1].type == JSMN_STRING && (snp->mask & IN_SPDI)) {
 						snp->snp->cname = js + ntok[1].start;
@@ -206,8 +272,13 @@ static int handle_json(char * const js, jsmntok_t * const tok, int count, snp_ex
 						}
 						j += 2;
 						child_processed = true;
+					} else if(level == 6 && ntok[1].type == JSMN_STRING && (snp->mask & IN_OBSERVATION)) {
+						snp->mask |= SEEN_FREQ_INSERTED_SEQUENCE;
+						if(ntok[1].end - ntok[1].start != 1 || js[ntok[1].start] != snp->inserted_sequence) snp->mask &= ~FREQ_ALLELES_OK;
+						j += 2;
+						child_processed = true;
 					}
-				break;
+					break;
 				case deleted_sequence:
 					if(level == 7 && ntok[1].type == JSMN_STRING && (snp->mask & IN_SPDI)) {
 						if(ntok[1].end - ntok[1].start == 1) {
@@ -215,9 +286,48 @@ static int handle_json(char * const js, jsmntok_t * const tok, int count, snp_ex
 						}
 						j += 2;
 						child_processed = true;
+					} else if(level == 6 && ntok[1].type == JSMN_STRING && (snp->mask & IN_OBSERVATION)) {
+						snp->mask |= SEEN_FREQ_DELETED_SEQUENCE;
+						if(ntok[1].end - ntok[1].start != 1 || js[ntok[1].start] != snp->deleted_sequence) snp->mask &= ~FREQ_ALLELES_OK;
+						j += 2;
+						child_processed = true;
 					}
-				break;
-
+					break;
+				case study_name:
+					if(level == 5 && ntok[1].type == JSMN_STRING && (snp->mask & IN_FREQUENCY)) {
+						snp->mask |= STUDY_NAME_OK;
+						j += 2;
+						child_processed = true;
+					}
+					break;
+				case allele_count:
+					if(level == 5 && ntok[1].type == JSMN_PRIMITIVE && (snp->mask & IN_FREQUENCY)) {
+						char *tp = js + ntok[1].start;
+						if(isdigit((int)*tp)) {
+							char *tp1;
+							snp->a = strtoul(tp, &tp1, 10);
+							if(tp1 == js + ntok[1].end) {
+								snp->mask |= SEEN_ALLELE_COUNT;
+							}
+						}
+						j += 2;
+						child_processed = true;
+					}
+					break;
+				case total_count:
+					if(level == 5 && ntok[1].type == JSMN_PRIMITIVE && (snp->mask & IN_FREQUENCY)) {
+						char *tp = js + ntok[1].start;
+						if(isdigit((int)*tp)) {
+							char *tp1;
+							snp->b = strtoul(tp, &tp1, 10);
+							if(tp1 == js + ntok[1].end) {
+								snp->mask |= SEEN_TOTAL_COUNT;
+							}
+						}
+						j += 2;
+						child_processed = true;
+					}
+					break;
 				default:
 					break;
 				}
@@ -261,7 +371,7 @@ void parse_json_line(char * const buf, const ssize_t l, jsmn_work_t * const work
 		s.h = work->keys;
 		handle_json(buf, work->tok, r, &s, 0);
 		if((s.mask & VALID_SNP) && snp->name && snp->cname) {
-//			fprintf(stdout, "rs%.*s\t%.*s\t%u\t%c\t%c\n", snp->name_len, snp->name, snp->cname_len, snp->cname, snp->pos, s.alleles[0], s.alleles[1]);
+//			fprintf(stdout, "rs%.*s\t%.*s\t%u\t%c\t%c\t%g\n", snp->name_len, snp->name, snp->cname_len, snp->cname, snp->pos, s.alleles[0], s.alleles[1], snp->maf);
 			snp->ok = true;
 		}
 	}

@@ -34,6 +34,7 @@ typedef struct {
 
 typedef struct {
    uint64_t mask;
+   uint64_t fq_mask;
    uint16_t name_buf_size;
    uint16_t name_buf_idx;
    uint8_t n_entries;
@@ -96,6 +97,7 @@ typedef struct {
 	uint32_t pos;
 	int name_len;
 	int cname_len;
+	double maf;
 	bool ok;
 } snp_t;
 
@@ -117,10 +119,12 @@ typedef struct {
 	file_t *used_files;
 	buffer_t *output_buf;
 	uint64_t n_snps;
+	uint64_t n_snps_maf_filtered;
 	uint64_t max_buf_size;
 	comp_block_t *cblocks;
 	int n_comp_blocks;
 	int cblock_idx;
+	double maf_limit;
 	pthread_mutex_t cblock_mut;
 	pthread_cond_t cblock_cond[3];
 	pthread_mutex_t param_mut;

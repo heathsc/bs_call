@@ -193,6 +193,7 @@ void *input_thread(void *pt) {
 					if(itype == dbsnp_json) check_prefix(&pref, "rs", 2, par);
 				}
 				snp.ok = false;
+				snp.maf = -1.0;
 				switch(itype) {
 				case dbsnp_json:
 					parse_json_line(buf, l, &jwork, &snp, par);

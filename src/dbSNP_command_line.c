@@ -31,6 +31,8 @@ static const char *usage(void) {
 			"   -c, --chrom-alias <FILE>           Chromosome name alias file\n"
 			"   -S, --sorted                       Assume input files are sorted by contigs (unless specified with -u command)\n"
 			"   -@, --threads <n>                  Extra threads\n"
+			"   -m, --maf-limit <x>                Flag SNPs with maf >= x so that bs_call will output these sites even if\n"
+			"                                      they are AA or TT reference homozygous.  This option only works with JSON input files\n"
 			"\n";
 }
 
@@ -42,6 +44,7 @@ static struct option loptions[] = {
 		{"chrom-alias",required_argument,0,'c'},
 		{"threads",required_argument,0,'@'},
 		{"sorted",no_argument,0,'S'},
+		{"maf",no_argument,0,'m'},
 		{0,0,0,0}
 };
 
@@ -66,7 +69,7 @@ void add_file(dbsnp_param_t * const par, char * const name, const bool sorted) {
 void handle_command_line(int argc, char *argv[], dbsnp_param_t * const par) {
 	int c;
 	bool sorted = false;
-	while ((c = getopt_long(argc, argv, "o:u:c:t:d:@:Sh?",loptions,NULL)) >= 0) {
+	while ((c = getopt_long(argc, argv, "o:u:c:t:m:d:@:Sh?",loptions,NULL)) >= 0) {
 		switch (c) {
 		case 'o':
 			par->output_file = optarg;
@@ -89,6 +92,12 @@ void handle_command_line(int argc, char *argv[], dbsnp_param_t * const par) {
 		case 'S':
 			sorted = true;
 			break;
+		case 'm': {
+			double z = atof(optarg);
+			if(z < 0.0 || z > 0.5) fprintf(stderr, "--maf-limit must be between 0 and 0.5\n");
+			else par->maf_limit = z;
+		}
+		break;
 		case '@':
 			par->threads = atoi(optarg);
 			if(par->threads < 0) par->threads = 0;

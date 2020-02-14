@@ -32,7 +32,7 @@ gt_option bs_call_options[] = {
   { 303, "reference-bias", GT_OPT_REQUIRED, GT_OPT_STRING, 3, true, "<float>","Set bias to reference homozygote (default "STRING(DEFAULT_REF_BIAS)")"},
 	/* Misc */
   { 'v', "verbose", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 4, true, "", ""},
-  { 't', "threads", GT_OPT_REQUIRED, GT_OPT_INT, 4, false, "<int> | <int>,<int>,<int>", "Set additional threads for calculation, input and output"},
+  { 't', "threads", GT_OPT_REQUIRED, GT_OPT_INT, 4, true, "<int> | <int>,<int>,<int>", "Set additional threads for calculation, input and output"},
   { 'h', "help", GT_OPT_NO_ARGUMENT, GT_OPT_NONE, 4, true, "", ""},
   {  0, 0, 0, 0, 0, false, "", ""}
 };

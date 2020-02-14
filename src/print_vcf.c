@@ -129,14 +129,14 @@ void _print_vcf_entry(bcf1_t *bcf, ctg_t * const ctg, gt_meth *gtm, const char *
 	if (!dp) return;
 	size_t rs_len = 0;
 	rs[0] = 0;
-	bool rs_found = false;
+	uint8_t rs_found = false;
 	if(dbSNP_ctg != NULL) rs_found = dbSNP_lookup_name(par->work.dbSNP_hdr, dbSNP_ctg, rs, &rs_len, x);
 	for(int i = 0; i < 5; i++) prf_ctxt[i] = pbase[(int)rf_ctxt[i]];
 	char rfc = prf_ctxt[2];
 	int rfix = (int)rf_ctxt[2];
 	int gt = gt_store[2] - 1;
 	// Skip homozygous reference if AA or TT
-	bool skip = (!par->all_positions && !rs_found && gt_flag[gt][rfix]);
+	bool skip = (!par->all_positions && !(rs_found & 2) && gt_flag[gt][rfix]);
 	double z = gtm->gt_prob[gt];
 	int phred;
 	double z1 = exp(z * LOG10);

@@ -18,6 +18,7 @@ void clear_bins(bin *b, int ct) {
 		b[i].name_buf_size = b[i].name_buf_idx = 0;
 		b[i].name_buf = NULL;
 		b[i].mask = 0;
+		b[i].fq_mask = 0;
 		b[i].n_entries = 0;
 	}
 }
@@ -91,6 +92,7 @@ int add_to_bin(bin * const b, const snp_t * const snp, const int pref_ix, dbsnp_
 		b->name_buf_size = (b->name_buf_size + l1) * 1.25;
 		b->name_buf = realloc(b->name_buf, (size_t)b->name_buf_size);
 	}
+	if(snp->maf >= par->maf_limit) b->fq_mask |= ((uint64_t)1 << b->n_entries);
 	int x = (b->n_entries++) << 1;
 	b->entry[x] = (l1 << 8) | off;
 	b->entry[x + 1] = pref_ix;

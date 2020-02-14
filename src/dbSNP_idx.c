@@ -25,7 +25,9 @@ int main(int argc, char *argv[]) {
 			.prefixes = NULL,
 			.n_prefix = 0,
 			.n_snps = 0,
+			.n_snps_maf_filtered = 0,
 			.max_buf_size = 0,
+			.maf_limit = 1.0,
 			.param_mut = PTHREAD_MUTEX_INITIALIZER,
 			.param_cond = PTHREAD_COND_INITIALIZER,
 			.contig_queue_mut = PTHREAD_MUTEX_INITIALIZER,
@@ -90,6 +92,6 @@ int main(int argc, char *argv[]) {
 		if(!st) finish_output(&par);
 	}
 //	if(!st) process_contigs(par.outfile);
-	fprintf(stderr, "Index file created: %lu snps processed, st = %d\n", par.n_snps, st);
+	fprintf(stderr, "Index file created: %lu snps processed, %lu passed maf filter, status = %s\n", par.n_snps, par.n_snps_maf_filtered, st ? "FAILED" : "OK");
 	return st;
 }
