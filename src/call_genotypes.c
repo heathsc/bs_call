@@ -121,6 +121,7 @@ void init_calc_threads(sr_param * const param) {
 	int nthr = 1 + param->num_threads[CALC_THREADS];
 	work->calc_end = false;
 	work->n_calc_threads = nthr;
+	work->calc_threads_complete = nthr;
 	cthread_par *cpar = malloc(sizeof(cthread_par) * nthr);
 	for(int i = 0; i < nthr; i++) {
 		cpar[i].param = param;
@@ -141,6 +142,9 @@ void join_calc_threads(sr_param * const param) {
 	for(int i = 0; i < nthr; i++) pthread_join(work->calc_threads[i].thr, NULL);
 	free(work->calc_threads);
 	work->calc_threads = NULL;
+	pthread_mutex_lock(&work->vcf_mutex);
+	pthread_cond_signal(&work->vcf_cond);
+	pthread_mutex_unlock(&work->vcf_mutex);
 }
 
 void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const uint32_t x, const uint32_t y, sr_param * const param) {
@@ -148,6 +152,13 @@ void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const ui
 	uint32_t nr = gt_vector_get_used(align_list);
 	assert(y >= x);
 	uint32_t sz = y - x + 1;
+	work_t * const work = &param->work;
+	pthread_mutex_lock(&work->calc_mutex);
+	while(work->calc_threads_complete < work->n_calc_threads) pthread_cond_wait(&work->calc_cond2, &work->calc_mutex);
+	pthread_mutex_unlock(&work->calc_mutex);
+	pthread_mutex_lock(&work->vcf_mutex);
+	pthread_cond_signal(&work->vcf_cond);
+	pthread_mutex_unlock(&work->vcf_mutex);
 	if(pileupv == NULL) pileupv = gt_vector_new(sz, sizeof(pileup));
 	else gt_vector_reserve(pileupv, sz, false);
 	if(gt_resv == NULL) gt_resv = gt_vector_new(sz, sizeof(gt_meth));
@@ -203,7 +214,6 @@ void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const ui
 			ori ^= 1;
 		}
 	}
-	work_t * const work = &param->work;
 	// Prepare printing
 	pthread_mutex_lock(&work->print_mutex);
 	while(param->work.vcf_n) {
@@ -243,9 +253,5 @@ void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const ui
 		cpar[i].ready = true;
 	}
 	pthread_cond_broadcast(&work->calc_cond1);
-	while(work->calc_threads_complete < work->n_calc_threads) pthread_cond_wait(&work->calc_cond2, &work->calc_mutex);
 	pthread_mutex_unlock(&work->calc_mutex);
-	pthread_mutex_lock(&work->vcf_mutex);
-	pthread_cond_signal(&work->vcf_cond);
-	pthread_mutex_unlock(&work->vcf_mutex);
 }
