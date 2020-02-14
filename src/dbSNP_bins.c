@@ -11,6 +11,10 @@
 #include <sys/wait.h>
 #include <zlib.h>
 
+#include <htslib/khash.h>
+
+KHASH_SET_INIT_STR(str);
+
 void clear_bins(bin *b, int ct) {
 	for(int i = 0; i < ct; i++) {
 		b[i].entry_size = 0;
@@ -86,19 +90,28 @@ int add_to_bin(bin * const b, const snp_t * const snp, const int pref_ix, dbsnp_
 		fprintf(stderr,"%s:%d %s() Marker name exceeds 510 characters: %s\n", __FILE__, __LINE__, __func__, snp->name);
 		exit(-1);
 	}
-	uint16_t l1 = (uint16_t)(snp->name_len + 1) >> 1;
+	uint16_t l1 = (uint16_t)(snp->name_len - snp->name_off + 1) >> 1;
 	uint16_t sz = b->name_buf_idx;
 	if(sz + l1 > b->name_buf_size) {
 		b->name_buf_size = (b->name_buf_size + l1) * 1.25;
 		b->name_buf = realloc(b->name_buf, (size_t)b->name_buf_size);
 	}
-	if(snp->maf >= par->maf_limit) b->fq_mask |= ((uint64_t)1 << b->n_entries);
+	const char c = snp->name[snp->name_len];
+	snp->name[snp->name_len] = 0;
+	bool select = snp->maf >= par->maf_limit;
+	if(!select && par->select_hash) {
+		khash_t(str) *h = par->select_hash;
+		khint_t k = kh_get(str, h, snp->name);
+		if(k != kh_end(h)) select = true;
+	}
+	if(select) b->fq_mask |= ((uint64_t)1 << b->n_entries);
 	int x = (b->n_entries++) << 1;
 	b->entry[x] = (l1 << 8) | off;
 	b->entry[x + 1] = pref_ix;
-	for(size_t i = 0; i < snp->name_len; i += 2) {
+	for(size_t i = snp->name_off; i < snp->name_len; i += 2) {
 		b->name_buf[b->name_buf_idx++] = (dtab[(int)snp->name[i]] << 4) | dtab[(int)snp->name[i + 1]];
 	}
+	snp->name[snp->name_len] = c;
 	return 1;
 }
 

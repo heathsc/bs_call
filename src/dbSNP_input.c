@@ -154,7 +154,7 @@ static void adjust_name(snp_t * const snp, prefix **pref, dbsnp_param_t * const 
 	int k = snp->name_len;
 	for(; k > 0; k--) if(!isdigit((int)snp->name[k - 1])) break;
 	check_prefix(pref, snp->name, k, par);
-	snp->name += k;
+	snp->name_off = k;
 }
 
 void *input_thread(void *pt) {
@@ -194,6 +194,7 @@ void *input_thread(void *pt) {
 				}
 				snp.ok = false;
 				snp.maf = -1.0;
+				snp.name_off = 0;
 				switch(itype) {
 				case dbsnp_json:
 					parse_json_line(buf, l, &jwork, &snp, par);

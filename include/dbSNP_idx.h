@@ -96,6 +96,7 @@ typedef struct {
 	char *cname;
 	uint32_t pos;
 	int name_len;
+	int name_off;
 	int cname_len;
 	double maf;
 	bool ok;
@@ -104,6 +105,8 @@ typedef struct {
 typedef struct {
 	char *output_file;
 	char *chrom_alias_file;
+	char *select_file;
+	void *select_hash;
 	FILE *outfile;
 	int threads;
 	int read_jobs;
@@ -158,6 +161,7 @@ void resize_buffer(buffer_t * const buf, size_t sz);
 void swap_buffers(buffer_t * const buf1, buffer_t * const buf2);
 void read_alias_file(dbsnp_param_t * const par);
 char *check_alias(snp_t * const snp, dbsnp_param_t * const par);
+void read_select_file(dbsnp_param_t * const par);
 
 #define reserve_buffer(buf, x) resize_buffer(buf, (buf)->len + x)
 #define clear_buffer(buf) (buf)->len = 0

@@ -39,6 +39,8 @@ int main(int argc, char *argv[]) {
 			.output_finished = false,
 			.sorted = NULL,
 			.unsorted = NULL,
+			.select_file = NULL,
+			.select_hash = NULL,
 			.used_files = 0,
 			.unsorted_flag = false,
 			.n_unsorted_being_processed = 0

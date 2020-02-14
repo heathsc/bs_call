@@ -17,7 +17,7 @@ parse_args.c read_reference.c process.c get_template_vector.c al_utils.c read_ut
 process_template.c call_genotypes.c input_sam.c process_sam_header.c get_sequence.c
 
 DBSNP_SRC=dbSNP_idx.c dbSNP_compress.c dbSNP_utils.c dbSNP_command_line.c dbSNP_output.c \
-dbSNP_input.c dbSNP_bins.c dbSNP_buffer.c dbSNP_alias.c dbSNP_json.c mm.c
+dbSNP_input.c dbSNP_bins.c dbSNP_buffer.c dbSNP_alias.c dbSNP_json.c dbSNP_select.c mm.c
 
 BS_CALL_INC=bs_call.h bs_call_options.h uthash.h dbSNP.h
 DBSNP_INC=dbSNP_idx.h dbSNP_compress.h dbSNP_utils.h uthash.h jsmn.h

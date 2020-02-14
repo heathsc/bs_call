@@ -5,13 +5,6 @@
  *      Author: heath
  */
 
-/*
- * dbSNP_input.c
- *
- *  Created on: Feb 2, 2020
- *      Author: heath
- */
-
 #include "dbSNP_idx.h"
 #include "dbSNP_utils.h"
 #include <sys/types.h>
