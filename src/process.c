@@ -151,6 +151,7 @@ gt_status bs_call_process(sr_param * const param) {
 			}
 			param->work.sam_header = header;
 			fill_base_prob_table();
+			init_calc_threads(param);
 			pthread_t process_thr, print_thr, mprof_thr;
 			pthread_create(&print_thr, NULL, print_thread, param);
 			pthread_create(&process_thr, NULL, process_thread, param);
@@ -161,6 +162,7 @@ gt_status bs_call_process(sr_param * const param) {
 			pthread_join(process_thr, 0);
 			param->work.print_end = true;
 			param->work.mprof_end = true;
+			join_calc_threads(param);
 			pthread_mutex_lock(&param->work.mprof_mutex);
 			pthread_cond_broadcast(&param->work.mprof_cond1);
 			pthread_cond_broadcast(&param->work.mprof_cond2);

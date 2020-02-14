@@ -214,6 +214,17 @@ typedef struct {
 	gt_vector *orig_pos[2];
 } mprof_thread_t;
 
+typedef struct {
+	pthread_t thr;
+	struct _sr_param *param;
+	gt_meth *gtm;
+	pileup *cts;
+	uint32_t x;
+	uint32_t y;
+	int step;
+	bool ready;
+} cthread_par;
+
 #define N_MPROF_BUFFERS 256
 
 typedef struct {
@@ -224,6 +235,7 @@ typedef struct {
 	bool process_end;
 	bool print_end;
 	bool mprof_end;
+	bool calc_end;
 	gt_vcf *vcf;
 	uint32_t vcf_x;
 	ctg_t *vcf_ctg;
@@ -239,6 +251,9 @@ typedef struct {
 	pthread_mutex_t mprof_mutex;
 	pthread_cond_t mprof_cond1;
 	pthread_cond_t mprof_cond2;
+	pthread_mutex_t calc_mutex;
+	pthread_cond_t calc_cond1;
+	pthread_cond_t calc_cond2;
 	uint32_t n_contigs;
 	uint32_t n_regions;
 	faidx_t *seq_idx;
@@ -257,6 +272,9 @@ typedef struct {
 	bam_hdr_t *sam_header;
 	htsFile *sam_file;
 	hts_idx_t *sam_idx;
+	cthread_par *calc_threads;
+	int n_calc_threads;
+	int calc_threads_complete;
 	uint8_t flt_tab[768];
 	mprof_thread_t mprof_thread[N_MPROF_BUFFERS];
 	int mprof_read_idx;
@@ -274,7 +292,7 @@ typedef struct {
 #define INPUT_THREADS 1
 #define OUTPUT_THREADS 2
 
-typedef struct {
+typedef struct _sr_param {
 	char *input_file;
 	char *name_reference_file;
 	char *output_file;
@@ -338,6 +356,8 @@ void add_al_hash_to_free_list(align_hash * const ah, gt_vector * const free_hash
 bool check_for_tag_in_hash(const align_hash * const hash, gt_string * const tag);
 void meth_profile(const align_details * const al, const uint32_t x, gt_vector * const orig_pos[2], const int max_pos, sr_param * const par);
 void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const uint32_t x, const uint32_t y, sr_param * const param);
+void init_calc_threads(sr_param * const param);
+void join_calc_threads(sr_param * const param);
 bool get_sequence_index(sr_param * const par);
 bool get_sequence_string(ctg_t * const ctg, const uint32_t x, const uint32_t sz, ctg_t * const prev_ctg, gt_string * const ref, sr_param * const par);
 bool process_sam_header(sr_param * const par, bam_hdr_t * hdr);

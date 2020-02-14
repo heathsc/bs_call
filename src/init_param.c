@@ -46,6 +46,9 @@ void init_param(sr_param * const par) {
 	pthread_mutex_init(&par->work.mprof_mutex, NULL);
 	pthread_cond_init(&par->work.mprof_cond1, NULL);
 	pthread_cond_init(&par->work.mprof_cond2, NULL);
+	pthread_mutex_init(&par->work.calc_mutex, NULL);
+	pthread_cond_init(&par->work.calc_cond1, NULL);
+	pthread_cond_init(&par->work.calc_cond2, NULL);
 	defs_t * const defs = &par->defs;
 	for(int i = 0; i < 4 ;i++) defs->flt_name[i] = strdup(flts[i]);
 	for(int i = 0; i < 10; i++) defs->gt_het[i] = het[i];

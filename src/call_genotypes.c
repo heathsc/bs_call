@@ -18,105 +18,133 @@ static const char base_tab_st[3][4] = {
 		{1, 2, 3, 4}, {1, 6, 3, 8}, {5, 2, 7, 4}
 };
 
-typedef struct {
-	pthread_t thr;
-	sr_param *param;
-	gt_meth *gtm;
-	pileup *cts;
-	uint32_t x;
-	uint32_t y;
-	int step;
-} cthread_par;
-
 void *call_thread(void *arg) {
 	cthread_par *cpar = arg;
-	uint32_t x = cpar->x, y = cpar->y;
-	int step = cpar->step;
-	gt_meth *tg = cpar->gtm;
-	pileup *tp = cpar->cts;
-	work_t * const work = &cpar->param->work;
-	gt_vcf *v = work->vcf + x - work->vcf_x;
 	const sr_param * const par = cpar->param;
-	const char *ref_st = gt_string_get_string(par->work.ref);
-	for (uint32_t i = x; i <= y; i += step, tp += step, tg += step, v += step) {
-		if (tp->n) {
-			float tot_qual = 0.0;
-			for(int j = 0; j < 8; j++) {
-				float nn = (float)(tp->counts[0][j] + tp->counts[1][j]);
-				if(nn > 0) {
-					tot_qual += tp->quality[j];
-					tg->qual[j] = (int)floorf(0.5 + tp->quality[j] / nn);
-				} else tg->qual[j] = 0;
+	work_t * const work = &cpar->param->work;
+	while(!work->calc_end) {
+		pthread_mutex_lock(&work->calc_mutex);
+		while(!(cpar->ready || work->calc_end)) pthread_cond_wait(&work->calc_cond1, &work->calc_mutex);
+		pthread_mutex_unlock(&work->calc_mutex);
+		if(cpar->ready) {
+			cpar->ready = false;
+			uint32_t x = cpar->x, y = cpar->y;
+			int step = cpar->step;
+			gt_meth *tg = cpar->gtm;
+			pileup *tp = cpar->cts;
+			gt_vcf *v = work->vcf + x - work->vcf_x;
+
+			const char *ref_st = gt_string_get_string(par->work.ref);
+			for (uint32_t i = x; i <= y; i += step, tp += step, tg += step, v += step) {
+				if (tp->n) {
+					float tot_qual = 0.0;
+					for(int j = 0; j < 8; j++) {
+						float nn = (float)(tp->counts[0][j] + tp->counts[1][j]);
+						if(nn > 0) {
+							tot_qual += tp->quality[j];
+							tg->qual[j] = (int)floorf(0.5 + tp->quality[j] / nn);
+						} else tg->qual[j] = 0;
+					}
+					tg->aq = (int)floorf(0.5 + tot_qual / (float)tp->n);
+					tg->mq = (int)(0.5 + sqrt(tp->mapq2 / (float)tp->n));
+					for (int j = 0; j < 8; j++) {
+						if (tp->counts[0][j] + tp->counts[1][j]) {
+							tg->counts[j] = tp->counts[0][j] + tp->counts[1][j];
+						}
+					}
+					calc_gt_prob(tg, par, ref_st[i - work->vcf_x]);
+					double fs = 0.0;
+					if(par->defs.gt_het[tg->max_gt]) {
+						int ftab[4] = {0, 0, 0, 0};
+						switch(tg->max_gt) {
+						case 1: // AC
+							ftab[0] = tp->counts[0][0] + tp->counts[0][4];
+							ftab[1] = tp->counts[0][1] + tp->counts[0][5] + tp->counts[0][7];
+							ftab[2] = tp->counts[1][0] + tp->counts[1][4];
+							ftab[3] = tp->counts[1][1] + tp->counts[1][5] + tp->counts[1][7];
+							break;
+						case 2: // AG
+							ftab[0] = tp->counts[0][0];
+							ftab[1] = tp->counts[0][2] + tp->counts[0][6];
+							ftab[2] = tp->counts[1][0];
+							ftab[3] = tp->counts[1][2] + tp->counts[1][6];
+							break;
+						case 3: // AT
+							ftab[0] = tp->counts[0][0] + tp->counts[0][4];
+							ftab[1] = tp->counts[0][3] + tp->counts[0][7];
+							ftab[2] = tp->counts[1][0] + tp->counts[1][4];
+							ftab[3] = tp->counts[1][3] + tp->counts[1][7];
+							break;
+						case 5: // CG
+							ftab[0] = tp->counts[0][1] + tp->counts[0][5] + tp->counts[0][7];
+							ftab[1] = tp->counts[0][2] + tp->counts[0][4] + tp->counts[0][6];
+							ftab[2] = tp->counts[1][1] + tp->counts[1][5] + tp->counts[1][7];
+							ftab[3] = tp->counts[1][2] + tp->counts[1][4] + tp->counts[1][6];
+							break;
+						case 6: // CT
+							ftab[0] = tp->counts[0][1] + tp->counts[0][5];
+							ftab[1] = tp->counts[0][3];
+							ftab[2] = tp->counts[1][1] + tp->counts[1][5];
+							ftab[3] = tp->counts[1][3];
+							break;
+						case 8: // GT
+							ftab[0] = tp->counts[0][2] + tp->counts[0][4] + tp->counts[0][6];
+							ftab[1] = tp->counts[0][3] + tp->counts[0][7];
+							ftab[2] = tp->counts[1][2] + tp->counts[1][4] + tp->counts[0][6];
+							ftab[3] = tp->counts[1][3] + tp->counts[1][7];
+							break;
+						default: // Should not happen
+							fprintf(stderr, "Internal error: illegal option in call_thread()\n");
+							break;
+						}
+						double z = fisher(ftab, par->defs.lfact_store);
+						if(z < 1.0e-20) z = 1.0e-20;
+						fs = log(z) / LOG10;
+					}
+					tg->fisher_strand = fs;
+					memcpy(&v->gtm, tg, sizeof(gt_meth));
+					v->skip = false;
+				} else v->skip = true;
+				v->ready = true;
+				pthread_cond_signal(&work->vcf_cond);
 			}
-			tg->aq = (int)floorf(0.5 + tot_qual / (float)tp->n);
-			tg->mq = (int)(0.5 + sqrt(tp->mapq2 / (float)tp->n));
-			for (int j = 0; j < 8; j++) {
-				if (tp->counts[0][j] + tp->counts[1][j]) {
-					tg->counts[j] = tp->counts[0][j] + tp->counts[1][j];
-				}
-			}
-			calc_gt_prob(tg, par, ref_st[i - work->vcf_x]);
-			double fs = 0.0;
-			if(par->defs.gt_het[tg->max_gt]) {
-				int ftab[4] = {0, 0, 0, 0};
-				switch(tg->max_gt) {
-				case 1: // AC
-					ftab[0] = tp->counts[0][0] + tp->counts[0][4];
-					ftab[1] = tp->counts[0][1] + tp->counts[0][5] + tp->counts[0][7];
-					ftab[2] = tp->counts[1][0] + tp->counts[1][4];
-					ftab[3] = tp->counts[1][1] + tp->counts[1][5] + tp->counts[1][7];
-					break;
-				case 2: // AG
-					ftab[0] = tp->counts[0][0];
-					ftab[1] = tp->counts[0][2] + tp->counts[0][6];
-					ftab[2] = tp->counts[1][0];
-					ftab[3] = tp->counts[1][2] + tp->counts[1][6];
-					break;
-				case 3: // AT
-					ftab[0] = tp->counts[0][0] + tp->counts[0][4];
-					ftab[1] = tp->counts[0][3] + tp->counts[0][7];
-					ftab[2] = tp->counts[1][0] + tp->counts[1][4];
-					ftab[3] = tp->counts[1][3] + tp->counts[1][7];
-					break;
-				case 5: // CG
-					ftab[0] = tp->counts[0][1] + tp->counts[0][5] + tp->counts[0][7];
-					ftab[1] = tp->counts[0][2] + tp->counts[0][4] + tp->counts[0][6];
-					ftab[2] = tp->counts[1][1] + tp->counts[1][5] + tp->counts[1][7];
-					ftab[3] = tp->counts[1][2] + tp->counts[1][4] + tp->counts[1][6];
-					break;
-				case 6: // CT
-					ftab[0] = tp->counts[0][1] + tp->counts[0][5];
-					ftab[1] = tp->counts[0][3];
-					ftab[2] = tp->counts[1][1] + tp->counts[1][5];
-					ftab[3] = tp->counts[1][3];
-					break;
-				case 8: // GT
-					ftab[0] = tp->counts[0][2] + tp->counts[0][4] + tp->counts[0][6];
-					ftab[1] = tp->counts[0][3] + tp->counts[0][7];
-					ftab[2] = tp->counts[1][2] + tp->counts[1][4] + tp->counts[0][6];
-					ftab[3] = tp->counts[1][3] + tp->counts[1][7];
-					break;
-				default: // Should not happen
-					fprintf(stderr, "Internal error: illegal option in call_thread()\n");
-					break;
-				}
-				double z = fisher(ftab, par->defs.lfact_store);
-				if(z < 1.0e-20) z = 1.0e-20;
-				fs = log(z) / LOG10;
-			}
-			tg->fisher_strand = fs;
-			memcpy(&v->gtm, tg, sizeof(gt_meth));
-			v->skip = false;
-		} else v->skip = true;
-		v->ready = true;
-		pthread_cond_signal(&work->vcf_cond);
+			pthread_mutex_lock(&work->calc_mutex);
+			if(++work->calc_threads_complete >= work->n_calc_threads) pthread_cond_signal(&work->calc_cond2);
+			pthread_mutex_unlock(&work->calc_mutex);
+		}
 	}
 	return NULL;
 }
 
-static gt_vector *pileupv, *gt_resv;
+void init_calc_threads(sr_param * const param) {
+	work_t * const work = &param->work;
+	int nthr = 1 + param->num_threads[CALC_THREADS];
+	work->calc_end = false;
+	work->n_calc_threads = nthr;
+	cthread_par *cpar = malloc(sizeof(cthread_par) * nthr);
+	for(int i = 0; i < nthr; i++) {
+		cpar[i].param = param;
+		cpar[i].step = nthr;
+		cpar[i].ready = false;
+		pthread_create(&cpar[i].thr, NULL, call_thread, cpar + i);
+	}
+	work->calc_threads = cpar;
+}
+
+void join_calc_threads(sr_param * const param) {
+	work_t * const work = &param->work;
+	int nthr = work->n_calc_threads;
+	pthread_mutex_lock(&work->calc_mutex);
+	work->calc_end = true;
+	pthread_cond_broadcast(&work->calc_cond1);
+	pthread_mutex_unlock(&work->calc_mutex);
+	for(int i = 0; i < nthr; i++) pthread_join(work->calc_threads[i].thr, NULL);
+	free(work->calc_threads);
+	work->calc_threads = NULL;
+}
 
 void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const uint32_t x, const uint32_t y, sr_param * const param) {
+	static gt_vector *pileupv, *gt_resv;
 	uint32_t nr = gt_vector_get_used(align_list);
 	assert(y >= x);
 	uint32_t sz = y - x + 1;
@@ -202,21 +230,22 @@ void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const ui
 	pthread_mutex_lock(&work->print_mutex);
 	pthread_cond_signal(&param->work.print_cond1);
 	pthread_mutex_unlock(&work->print_mutex);
-	// Set up calculation threads
-	int nthr = 1 + param->num_threads[CALC_THREADS];
-	cthread_par *cpar = malloc(sizeof(cthread_par) * nthr);
+	// Trigger calculation threads
+	int nthr = work->n_calc_threads;
+	cthread_par *cpar = work->calc_threads;
+	pthread_mutex_lock(&work->calc_mutex);
+	work->calc_threads_complete = 0;
 	for(int i = 0; i < nthr; i++) {
-		cpar[i].param = param;
 		cpar[i].gtm = gt_res + i;
 		cpar[i].cts = counts + i;
 		cpar[i].x = x + i;
 		cpar[i].y = y;
-		cpar[i].step = nthr;
-		pthread_create(&cpar[i].thr, NULL, call_thread, cpar + i);
+		cpar[i].ready = true;
 	}
-	for(int i = 0; i < nthr; i++) pthread_join(cpar[i].thr, 0);
+	pthread_cond_broadcast(&work->calc_cond1);
+	while(work->calc_threads_complete < work->n_calc_threads) pthread_cond_wait(&work->calc_cond2, &work->calc_mutex);
+	pthread_mutex_unlock(&work->calc_mutex);
 	pthread_mutex_lock(&work->vcf_mutex);
 	pthread_cond_signal(&work->vcf_cond);
 	pthread_mutex_unlock(&work->vcf_mutex);
-	free(cpar);
 }
