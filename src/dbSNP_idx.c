@@ -93,7 +93,10 @@ int main(int argc, char *argv[]) {
 		pthread_join(write_thr, NULL);
 		if(!st) finish_output(&par);
 	}
-//	if(!st) process_contigs(par.outfile);
-	fprintf(stderr, "Index file created: %lu snps processed, %lu passed maf filter, status = %s\n", par.n_snps, par.n_snps_maf_filtered, st ? "FAILED" : "OK");
+	if(st) fprintf(stderr, "Index file creation failed\n");
+	else {
+		if(par.n_snps_maf_filtered > 0) fprintf(stderr, "Index file created: %lu snps processed, %lu selected for constant calling\n", par.n_snps, par.n_snps_maf_filtered);
+		else fprintf(stderr, "Index file created: %lu snps processed\n", par.n_snps);
+	}
 	return st;
 }

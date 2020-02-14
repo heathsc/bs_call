@@ -75,8 +75,10 @@ static contig * find_or_create_contig(dbsnp_param_t * const par, const snp_t * c
 		ctg = new_contig(snp, rname, file, binx);
 		HASH_ADD_KEYPTR(hh, par->contigs, ctg->name, ctg->name_len, ctg);
 	} else if(!par->unsorted_flag) {
-		if(file == ctg->first_file) fprintf(stderr, "Contig %s found in multiple places in input '%s' - verify usage of --sorted option\n", ctg->rname, file->name);
-		else {
+		if(file == ctg->first_file) {
+			fprintf(stderr, "Contig %s found in multiple places in input '%s' - verify usage of --sorted option\n", ctg->rname, file->name);
+			ctg = NULL;
+		} else {
 			file_t *file1= ctg->first_file;
 			if(file1->sorted || !file1->read) {
 				fprintf(stderr, "Contig %s found in multiple files ('%s' and '%s') - verify usage of --sorted option\n", ctg->rname, file->name, ctg->first_file->name);
