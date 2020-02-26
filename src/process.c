@@ -159,6 +159,9 @@ gt_status bs_call_process(sr_param * const param) {
 			gt_vector *align_list = gt_vector_new(32, sizeof(align_details *));
 			err = read_input(in_file, align_list, param);
 			param->work.process_end = true;
+			pthread_mutex_lock(&param->work.process_mutex);
+			pthread_cond_broadcast(&param->work.process_cond1);
+			pthread_mutex_unlock(&param->work.process_mutex);
 			pthread_join(process_thr, 0);
 			param->work.print_end = true;
 			param->work.mprof_end = true;
