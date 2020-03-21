@@ -1,5 +1,6 @@
 AC_INIT([GEMTools],[1.0])
 
+AC_PROG_CC_STDC
 AC_CHECK_LIB([z], [gzopen], [HAVE_ZLIB=1])
 AC_SUBST([HAVE_ZLIB])
 AC_CHECK_LIB([bz2], [BZ2_bzReadOpen], [HAVE_BZLIB=1])
