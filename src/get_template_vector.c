@@ -237,7 +237,10 @@ gt_status read_input(htsFile *sam_input, gt_vector * align_list,sr_param *param)
 					gt_vector_set_elm(al_hash_list, thash->ix, align_hash *, NULL);
 					add_al_hash_to_free_list(thash, free_hash_list);
 				} else {
-					if(param->work.stats) param->work.stats->filter_cts[14]++;
+				  if(param->work.stats) {
+				    param->work.stats->filter_cts[14]++;
+				    param->work.stats->filter_bases[14] += gt_vector_get_used(al->read[reverse ? 1 : 0]);
+				  }
 					bool al_skip = false;
 					// If the pair is missing, it could be because it was a duplicate and has
 					// already been deleted.  In this case the read pair should lie within the current contig

@@ -22,7 +22,10 @@ void *mprof_thread(void *arg) {
 	pthread_mutex_lock(&par->work.mprof_mutex);
 	while(1) {
 		while(par->work.mprof_read_idx == par->work.mprof_write_idx && !par->work.mprof_end) {
-			pthread_cond_wait(&par->work.mprof_cond1, &par->work.mprof_mutex);
+			struct timespec ts;
+			clock_gettime(CLOCK_REALTIME, &ts);
+			ts.tv_sec += 5;
+			pthread_cond_timedwait(&par->work.mprof_cond1, &par->work.mprof_mutex, &ts);
 		}
 		bool end = (par->work.mprof_read_idx == par->work.mprof_write_idx);
 		int ix = par->work.mprof_read_idx;
@@ -44,7 +47,10 @@ void *process_thread(void *arg) {
 	while(true) {
 		pthread_mutex_lock(&par->work.process_mutex);
 		while(!par->work.align_list_waiting && !par->work.process_end) {
-			pthread_cond_wait(&par->work.process_cond1, &par->work.process_mutex);
+			struct timespec ts;
+			clock_gettime(CLOCK_REALTIME, &ts);
+			ts.tv_sec += 5;
+			pthread_cond_timedwait(&par->work.process_cond1, &par->work.process_mutex, &ts);
 		}
 		pthread_mutex_unlock(&par->work.process_mutex);
 		gt_vector *alist = work->align_list_waiting;
@@ -72,7 +78,10 @@ void *print_thread(void *arg) {
 	pthread_mutex_lock(&par->work.print_mutex);
 	while(1) {
 		while(!par->work.vcf_n && !par->work.print_end) {
-			pthread_cond_wait(&par->work.print_cond1, &par->work.print_mutex);
+			struct timespec ts;
+			clock_gettime(CLOCK_REALTIME, &ts);
+			ts.tv_sec += 5;
+			pthread_cond_timedwait(&par->work.print_cond1, &par->work.print_mutex, &ts);
 		}
 		pthread_mutex_unlock(&par->work.print_mutex);
 		if(par->work.vcf_n) {
@@ -81,7 +90,10 @@ void *print_thread(void *arg) {
 				while(!par->work.vcf[i].ready) {
 					pthread_mutex_lock(&par->work.vcf_mutex);
 					while(!par->work.vcf[i].ready) {
-						pthread_cond_wait(&par->work.vcf_cond, &par->work.vcf_mutex);
+						struct timespec ts;
+						clock_gettime(CLOCK_REALTIME, &ts);
+						ts.tv_sec += 5;
+						pthread_cond_timedwait(&par->work.vcf_cond, &par->work.vcf_mutex, &ts);
 					}
 					pthread_mutex_unlock(&par->work.vcf_mutex);
 				}
@@ -182,5 +194,3 @@ gt_status bs_call_process(sr_param * const param) {
 	close_input_file(param);
 	return err;
 }
-
-

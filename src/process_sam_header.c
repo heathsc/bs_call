@@ -54,7 +54,7 @@ static ctg_t *new_contig(char * const name) {
 //
 // The logic of what gets included is the follows:
 //
-// (a) If we have neither a contig bed of contig_sizes file then we find the intersect between the contigs that we find in the
+// (a) If we have neither a contig bed or contig_sizes file then we find the intersect between the contigs that we find in the
 // reference and those in the SAM/BAM header and use this list.  This allows us to get a correspondence for the contig ids between
 // the reference file and the SAM/BAM file. All selected contigs will be processed.
 //

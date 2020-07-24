@@ -24,7 +24,12 @@ void *call_thread(void *arg) {
 	work_t * const work = &cpar->param->work;
 	while(!work->calc_end) {
 		pthread_mutex_lock(&work->calc_mutex);
-		while(!(cpar->ready || work->calc_end)) pthread_cond_wait(&work->calc_cond1, &work->calc_mutex);
+		while(!(cpar->ready || work->calc_end)) {
+			struct timespec ts;
+			clock_gettime(CLOCK_REALTIME, &ts);
+			ts.tv_sec += 5;
+			pthread_cond_timedwait(&work->calc_cond1, &work->calc_mutex, &ts);
+		}
 		pthread_mutex_unlock(&work->calc_mutex);
 		if(cpar->ready) {
 			cpar->ready = false;
@@ -154,7 +159,12 @@ void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const ui
 	uint32_t sz = y - x + 1;
 	work_t * const work = &param->work;
 	pthread_mutex_lock(&work->calc_mutex);
-	while(work->calc_threads_complete < work->n_calc_threads) pthread_cond_wait(&work->calc_cond2, &work->calc_mutex);
+	while(work->calc_threads_complete < work->n_calc_threads) {
+		struct timespec ts;
+		clock_gettime(CLOCK_REALTIME, &ts);
+		ts.tv_sec += 5;
+		pthread_cond_timedwait(&work->calc_cond2, &work->calc_mutex, &ts);
+	}
 	pthread_mutex_unlock(&work->calc_mutex);
 	pthread_mutex_lock(&work->vcf_mutex);
 	pthread_cond_signal(&work->vcf_cond);
@@ -217,7 +227,10 @@ void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const ui
 	// Prepare printing
 	pthread_mutex_lock(&work->print_mutex);
 	while(param->work.vcf_n) {
-		pthread_cond_wait(&work->print_cond2, &work->print_mutex);
+		struct timespec ts;
+		clock_gettime(CLOCK_REALTIME, &ts);
+		ts.tv_sec += 5;
+		pthread_cond_timedwait(&work->print_cond2, &work->print_mutex, &ts);
 	}
 	pthread_mutex_unlock(&work->print_mutex);
 	if(sz > work->vcf_size) {
@@ -230,7 +243,10 @@ void call_genotypes_ML(ctg_t * const ctg, gt_vector * const align_list, const ui
 	// Check meth profiling has finished before we switch the reference
 	pthread_mutex_lock(&work->mprof_mutex);
 	while(work->mprof_read_idx != work->mprof_write_idx) {
-		pthread_cond_wait(&work->mprof_cond2, &work->mprof_mutex);
+		struct timespec ts;
+		clock_gettime(CLOCK_REALTIME, &ts);
+		ts.tv_sec += 5;
+		pthread_cond_timedwait(&work->mprof_cond2, &work->mprof_mutex, &ts);
 	}
 	pthread_mutex_unlock(&work->mprof_mutex);
 	gt_string *tp = work->ref;
