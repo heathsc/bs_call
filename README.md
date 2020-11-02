@@ -53,6 +53,8 @@ The parameters configured for this example are -p (Paired End Data) and -L5 (5 b
 ---------
 Changelog
 ---------
+    2.1.6 Add option for read end specific trimming.  Add debug target to Makefile.  
+          Add range checking to release target. Make changes for htslib 1.11.
     2.1.5 Move to new dbSNP format, allowing loading of individual chromosomes
     2.1.4 Fix bug when using the -k flag, and fix a rare hang at end of input
     2.1.3 If output format is not explicilty specified, an attempt to guess the format from the filename is made (i.e.,
