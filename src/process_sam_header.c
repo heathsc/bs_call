@@ -66,7 +66,7 @@ static ctg_t *new_contig(char * const name) {
 //
 // (d) If we have both a contig bed file and a contig sizes file, then (1) we check that the contigs in the contig sizes file are a
 // superset of the contigs in the contig bed file, (2) we write all contigs in the contig sizes file to the VCF header and (3) we
-// process only the contigs in the conrig bed file.  This allows us to process different contigs or groups of contigs separately,
+// process only the contigs in the contig bed file.  This allows us to process different contigs or groups of contigs separately,
 // but keeping the headers of each individual output VCF file the same, which allows us to use the fast -n option to bcftools concat.
 
 bool process_sam_header(sr_param * const par, bam_hdr_t * hdr) {

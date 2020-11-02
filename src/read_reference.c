@@ -41,7 +41,7 @@ void free_sequence(ctg_t * const contig) {
 	}
 }
 
-bool load_sequence(ctg_t * const contig, faidx_t *idx, const bool calc_gc) {
+bool load_sequence(ctg_t * const contig, faidx_t *idx1, const bool calc_gc) {
 
 	static const uint8_t btab[256] = {
 			['A'] = 1, ['C'] = 2, ['G'] = 3, ['T'] = 4,
@@ -52,6 +52,7 @@ bool load_sequence(ctg_t * const contig, faidx_t *idx, const bool calc_gc) {
 	gt_vector *gc_bins = calc_gc ? gt_vector_new(16374, sizeof(uint8_t)) : NULL;
 	fprintf(stderr, "Loading reference for %s\n", contig->name);
 	// Find offset in file
+	struct __faidx_t *idx = (struct __faidx_t *)idx1;
 	khiter_t iter = kh_get(s, idx->hash, contig->name);
 	if(iter == kh_end(idx->hash)) return true; // Sequence not found
 	faidx1_t v = kh_value(idx->hash, iter);

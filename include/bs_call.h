@@ -176,9 +176,9 @@ typedef struct {
 	uint32_t n;
 	float quality[8];
 	float mapq2;
-	uint8_t *seq;
-	size_t seq_size;
-	size_t seq_idx;
+//	uint8_t *seq;
+//	size_t seq_size;
+//	size_t seq_idx;
 } pileup;
 
 typedef struct {
