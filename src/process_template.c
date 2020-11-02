@@ -34,10 +34,11 @@ gt_status process_template_vector(gt_vector *align_list, ctg_t * const ctg, uint
 		return GT_STATUS_FAIL;
 	}
 	for (int i = 0; i < ix; i++, al_p++) {
-		if (param->left_trim || param->right_trim) {
-			trim_read((*al_p)->read[0], param->left_trim, param->right_trim);
-			trim_read((*al_p)->read[1], param->left_trim, param->right_trim);
-		}
+		// If orientation == FORWARD, read[0] = R1, read[1] = R2
+		// If orientation == REVERSE, read[0] = R2, read[1] = R1
+		int msk = (*al_p)->orientation == FORWARD ? 0 : 1;
+		if (param->left_trim[0] || param->right_trim[0]) trim_read((*al_p)->read[0 ^ msk], param->left_trim[0], param->right_trim[0]);
+		if (param->left_trim[1] || param->right_trim[1]) trim_read((*al_p)->read[1 ^ msk], param->left_trim[1], param->right_trim[1]);
 		uint32_t trim_left[2] = {0, 0};
 		uint32_t trim_right[2] = {0, 0};
 		trim_soft_clips(*al_p, stats, trim_left, trim_right);

@@ -46,13 +46,21 @@ gt_status parse_arguments(int argc, char **argv, sr_param *const par) {
 			par->keep_unmatched = true;
 			break;
 		case 'R':
-			par->right_trim = atol(optarg);
+			if(sscanf(optarg, "%u,%u", &par->right_trim[0], &par->right_trim[1]) != 2) {
+				if(sscanf(optarg, "%u", &par->right_trim[0]) != 1) {
+					gt_fatal_error_msg("Couldn't understand right trim option %s", optarg);
+				} else par->right_trim[1] = par->right_trim[0];
+			}
 			break;
 		case 'B':
 			par->blank_trim = true;
 			break;
 		case 'L':
-			par->left_trim = atol(optarg);
+			if(sscanf(optarg, "%u,%u", &par->left_trim[0], &par->left_trim[1]) != 2) {
+				if(sscanf(optarg, "%u", &par->left_trim[0]) != 1) {
+					gt_fatal_error_msg("Couldn't understand left trim option %s", optarg);
+				} else par->left_trim[1] = par->left_trim[0];
+			}
 			break;
 		case 'q':
 			par->mapq_thresh = (uint8_t)atoi(optarg);

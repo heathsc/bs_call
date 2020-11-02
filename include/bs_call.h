@@ -314,8 +314,8 @@ typedef struct _sr_param {
 	bool benchmark_mode;
 	uint8_t out_file_type;
 	BS_Caller caller;
-	int left_trim;
-	int right_trim;
+	uint32_t left_trim[2];
+	uint32_t right_trim[2];
 	int num_threads[3];
 	uint8_t mapq_thresh;
 	uint8_t min_qual;
