@@ -22,9 +22,9 @@ typedef khash_t(vdict) vdict_t;
 
 static void add_flt_counts(gt_vector *v, int ct, bool var) {
 	if(ct >= v->elements_allocated) gt_vector_reserve(v, ct + 1, true);
+	if(ct >= v->used) v->used = ct + 1;
 	fstats_cts *c = gt_vector_get_elm(v, ct, fstats_cts);
 	c->cts[var ? 1 : 0]++;
-	if(ct >= v->used) v->used = ct + 1;
 }
 
 static dbsnp_ctg_t *dbSNP_ctg;
