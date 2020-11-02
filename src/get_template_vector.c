@@ -116,7 +116,7 @@ gt_status read_input(htsFile *sam_input, gt_vector * align_list,sr_param *param)
 			chr_skip = false;
 			old_tid = curr_tid;
 			curr_tid = b->core.tid;
-			assert(curr_tid > 0);
+			assert(curr_tid >= 0);
 			int k = param->work.tid2id[curr_tid];
 			if(k < 0) chr_skip = true;
 			else param->work.contigs[k]->curr_reg = param->work.curr_region;
