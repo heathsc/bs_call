@@ -6,7 +6,7 @@
 #include <htslib/faidx.h>
 
 #include "dbSNP.h"
-#define BS_CALL_VERSION "2.1.6"
+#define BS_CALL_VERSION "2.1.7"
 
 #define STRING_EXP(tok) #tok
 #define STRING(tok) STRING_EXP(tok)
