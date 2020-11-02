@@ -1,0 +1,11 @@
+*~
+*.o
+config.log
+config.status
+.settings
+bin
+src/Makefile.mk
+gt/Makefile.mk
+gt/lib
+.cproject
+.project
