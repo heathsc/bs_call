@@ -8,9 +8,6 @@ Variant Caller for Bisulfite Sequencing Data.
 Installation
 ------------
 
-Before starting the installation of bscall, you should check if your
-system has the GSL library already installed.
-
 If your system does not have the hts library (htslib - used by samtools and
 bcftools) then you should install it before proceeding.
 
