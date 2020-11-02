@@ -43,7 +43,7 @@ GT_INLINE uint64_t gt_calculate_memory_required_v(const char *template,va_list v
           while (gt_is_number(*centinel)) ++centinel;
         }
       }
-      gt_check(centinel==EOS,PRINT_FORMAT);
+      gt_check(*centinel==EOS,PRINT_FORMAT);
       // Check format
       switch (*centinel) {
         case 's': { // String requires fetching the argument length // FIXME: %.*s
